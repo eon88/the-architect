@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Architect | Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-2xl mx-auto space-y-8">
+        <header class="flex justify-between items-end">
+            <div class="space-y-2">
+                <h1 class="text-xs uppercase tracking-widest text-gray-500 font-bold">The Manager Hat</h1>
+                <p class="text-3xl font-bold">Weekly Review</p>
+            </div>
+            <a href="/" class="text-xs text-gray-600 hover:text-yellow-500 transition uppercase tracking-tighter">&larr; Back to Doer</a>
+        </header>
+
+        <div class="grid gap-4">
+            {% for pillar, goal in pillars.items() %}
+            <div class="p-5 bg-neutral-900 rounded-2xl flex justify-between items-center group hover:bg-neutral-800 transition">
+                <div>
+                    <h3 class="text-sm font-bold text-yellow-500 uppercase">{{ pillar }}</h3>
+                    <p class="text-gray-300">{{ goal }}</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs text-gray-500">Momentum:</span>
+                    <button class="px-3 py-1 bg-green-900 text-green-300 text-xs rounded-full font-bold uppercase">Moving</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <footer class="text-center pt-8">
+            <p class="text-sm text-gray-600 italic">"Momentum is the only metric that matters."</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Architect | Doer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        .accent-border { border-left: 4px solid #fbbf24; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+    <div class="max-w-md w-full space-y-8">
+        <header class="text-center space-y-2">
+            <h1 class="text-xs uppercase tracking-widest text-gray-500 font-bold">The Doer Hat</h1>
+            <p class="text-2xl font-light italic">"Design your day, or someone else will."</p>
+        </header>
+
+        <main class="space-y-6">
+            <div class="p-6 bg-neutral-900 rounded-2xl accent-border shadow-xl">
+                <h2 class="text-xs uppercase text-yellow-500 font-bold mb-2">Morning Prime</h2>
+                <p class="text-lg leading-relaxed mb-4">{{ hero }}</p>
+                <div class="pt-4 border-t border-neutral-800">
+                    <p class="text-sm text-gray-400 mb-2">Daily Question:</p>
+                    <p class="text-xl font-medium">{{ question }}</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 bg-neutral-900 rounded-xl text-center hover:bg-neutral-800 transition cursor-pointer">
+                    <p class="text-xs text-gray-500 uppercase mb-1">Midday</p>
+                    <p class="text-sm font-medium">Alignment Check</p>
+                </div>
+                <div class="p-4 bg-neutral-900 rounded-xl text-center hover:bg-neutral-800 transition cursor-pointer">
+                    <p class="text-xs text-gray-500 uppercase mb-1">Evening</p>
+                    <p class="text-sm font-medium">Reflection</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center">
+            <a href="/manager" class="text-xs text-gray-600 hover:text-yellow-500 transition uppercase tracking-tighter">Switch to Manager Hat &rarr;</a>
+        </footer>
+    </div>
+</body>
+</html>
