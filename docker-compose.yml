@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=architect_user
+      - POSTGRES_PASSWORD=architect_password
+      - POSTGRES_DB=architect_db
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://architect_user:architect_password@db:5432/architect_db
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
