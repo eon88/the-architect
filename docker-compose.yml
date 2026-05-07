@@ -1,23 +1,29 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-architect_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-architect_password}
+      - POSTGRES_DB=${POSTGRES_DB:-architect_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=architect_user
-      - POSTGRES_PASSWORD=architect_password
-      - POSTGRES_DB=architect_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-architect_user} -d ${POSTGRES_DB:-architect_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     build: .
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://architect_user:architect_password@db:5432/architect_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-architect_user}:${POSTGRES_PASSWORD:-architect_password}@db:5432/${POSTGRES_DB:-architect_db}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
