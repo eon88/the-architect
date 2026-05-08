@@ -54,10 +54,14 @@
     </div>
 
     <script>
-        let userId = null;
+        let userId = localStorage.getItem('architect_user_id');
+
+        // Auto-resume session if we already have a userId
+        if (userId) {
+            document.addEventListener('DOMContentLoaded', () => showRitual());
+        }
 
         async function login() {
-            // Simulating Google Login for MVP
             const res = await fetch('/auth/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -65,14 +69,13 @@
             });
             const data = await res.json();
             userId = data.user_id;
+            localStorage.setItem('architect_user_id', userId);
             showRitual();
         }
 
         async function showRitual() {
             hideAll();
             document.getElementById('screen-ritual').classList.remove('hidden');
-            
-            // Try to show morning first
             const res = await fetch(`/ritual/morning/${userId}`);
             const data = await res.json();
             document.getElementById('morning-message').innerText = data.message;
@@ -82,7 +85,8 @@
         function showEvening() {
             document.getElementById('morning-view').classList.add('hidden');
             document.getElementById('evening-view').classList.remove('hidden');
-            
+            document.getElementById('journal-input').value = '';
+
             const questions = [
                 "Who in your life actually pushes you to be better, and who is just taking up space?",
                 "If your income vanished tomorrow, how many days could you survive?",
@@ -96,14 +100,21 @@
         }
 
         async function submitJournal() {
-            const content = document.getElementById('journal-input').value;
-            await fetch('/ritual/evening', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user_id: userId, content: content })
-            });
-            alert("Journal saved. See you in the morning.");
-            showRitual();
+            const content = document.getElementById('journal-input').value.trim();
+            if (!content) { alert("Write something first."); return; }
+
+            try {
+                const res = await fetch('/ritual/evening', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_id: userId, content: content })
+                });
+                if (!res.ok) throw new Error('Save failed');
+                alert("Journal saved. See you in the morning.");
+                showRitual();
+            } catch (err) {
+                alert("Something went wrong saving your journal. Try again.");
+            }
         }
 
         async function showMap() {
