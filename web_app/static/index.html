@@ -252,9 +252,20 @@
                 <div class="terminal-line" id="wl-2"></div>
                 <div class="terminal-line" id="wl-cursor"><span class="cursor"></span></div>
             </div>
-            <div class="welcome-actions" id="welcome-actions">
-                <button class="btn-yes" onclick="enterApp()">[ YES ]</button>
-                <button class="btn-later">later</button>
+            <!-- Auth form (hidden until animation ends) -->
+            <div id="auth-box" style="opacity:0; transition: opacity 0.6s; margin-top: 2rem;">
+                <div id="auth-error" style="color:#ff4444; font-size:0.8rem; margin-bottom:0.8rem; min-height:1.2em;"></div>
+                <input id="auth-email" type="email" placeholder="email" autocomplete="email"
+                    style="width:100%; background:transparent; border:none; border-bottom:1px solid #00ff41; color:#00ff41;
+                           font-family:'Courier New',monospace; font-size:0.95rem; padding:0.5rem 0; outline:none; margin-bottom:1rem;"/>
+                <input id="auth-password" type="password" placeholder="password" autocomplete="current-password"
+                    style="width:100%; background:transparent; border:none; border-bottom:1px solid #00ff41; color:#00ff41;
+                           font-family:'Courier New',monospace; font-size:0.95rem; padding:0.5rem 0; outline:none; margin-bottom:2rem;"/>
+                <div style="display:flex; gap:1.5rem; align-items:center;">
+                    <button class="btn-yes" onclick="doLogin()">[ LOGIN ]</button>
+                    <button class="btn-yes" onclick="doRegister()">[ CREATE ACCOUNT ]</button>
+                    <button class="btn-later">later</button>
+                </div>
             </div>
         </div>
     </div>
@@ -302,7 +313,8 @@
                 setTimeout(() => {
                     typeText('wl-2', 'Ready to invest in yourself?', 55, () => {
                         document.getElementById('wl-cursor').innerHTML = '';
-                        document.getElementById('welcome-actions').style.opacity = '1';
+                        document.getElementById('auth-box').style.opacity = '1';
+                        document.getElementById('auth-email').focus();
                     });
                 }, 500);
             });
@@ -315,17 +327,46 @@
             runWelcomeSequence();
         });
 
-        async function enterApp() {
-            if (!userId) {
-                const res = await fetch('/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'test@example.com', name: 'User' })
-                });
-                const data = await res.json();
-                userId = data.user_id;
-                localStorage.setItem('architect_user_id', userId);
+        function authError(msg) {
+            document.getElementById('auth-error').innerText = msg;
+        }
+
+        async function doLogin() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            if (!email || !password) { authError('Enter email and password.'); return; }
+            authError('');
+            const res = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            if (!res.ok) { authError('Wrong email or password.'); return; }
+            const data = await res.json();
+            userId = data.user_id;
+            localStorage.setItem('architect_user_id', userId);
+            showRitual();
+        }
+
+        async function doRegister() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            if (!email || !password) { authError('Enter email and password.'); return; }
+            if (password.length < 6) { authError('Password must be at least 6 characters.'); return; }
+            authError('');
+            const res = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                authError(err.detail || 'Registration failed.');
+                return;
             }
+            const data = await res.json();
+            userId = data.user_id;
+            localStorage.setItem('architect_user_id', userId);
             showRitual();
         }
 
