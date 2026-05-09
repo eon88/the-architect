@@ -104,7 +104,7 @@
             text-shadow: none;
         }
         .btn.visible { opacity: 1; transform: translateY(0); }
-        .btn:hover { background: #ff2020; box-shadow: 0 0 24px rgba(255,32,32,.5); }
+        .btn:hover, .btn:active { background: #ff2020; box-shadow: 0 0 24px rgba(255,32,32,.5); }
 
         .pill-later {
             display: block;
@@ -122,7 +122,7 @@
             transition: opacity .5s, background .25s, box-shadow .25s;
         }
         .pill-later.visible { opacity: 1; }
-        .pill-later:hover {
+        .pill-later:hover, .pill-later:active {
             background: #1a4aff;
             box-shadow: 0 0 18px rgba(26,74,255,.55);
         }
@@ -388,9 +388,12 @@
         document.getElementById('later-btn').classList.add('visible');
     }
 
-    function takeBluePill() {
+    async function takeBluePill() {
+        const btn = document.getElementById('later-btn');
+        btn.style.background = '#1a4aff';
+        btn.style.boxShadow = '0 0 18px rgba(26,74,255,.55)';
+        await sleep(380);
         window.close();
-        // fallback if browser blocks window.close()
         document.body.innerHTML = '';
         document.body.style.background = '#000';
     }
@@ -416,7 +419,11 @@
         document.getElementById('morning-message').textContent = `"${msg}"`;
     }
 
-    function enterApp() {
+    async function enterApp() {
+        const btn = document.getElementById('begin-btn');
+        btn.style.background = '#ff2020';
+        btn.style.boxShadow = '0 0 24px rgba(255,32,32,.5)';
+        await sleep(380);
         hideAll();
         document.getElementById('screen-ritual').classList.remove('hidden');
         showMorning();
