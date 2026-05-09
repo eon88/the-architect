@@ -1,53 +1,44 @@
 import json
-import random
+import os
+import anthropic
 from prompts import PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT, AUDITOR_PROMPT
 
-# In production, this would be a real LLM call to Gemma/Claude
-def call_llm(system_prompt, user_input):
-    """
-    Simplified mock LLM for the web app. 
-    This will be replaced by the actual API call in the final version.
-    """
-    if "Tone Auditor" in system_prompt:
-        return f"Listen — {user_input} Stop worrying about the noise and focus on the work. That's how you win."
-    elif "Storyteller" in system_prompt:
-        strategy = json.loads(user_input)
-        pillar = strategy.get("priority_pillar", "Social")
-        stories = {
-            "Financial": "Marcus Aurelius proved that true security comes from the strength of the mind, not the size of the treasury.",
-            "Spiritual": "The Stoics taught that clarity comes from action, not from thinking.",
-            "Social": "The Spartans knew that a man alone is a target, but a man with a tribe is a force."
-        }
-        return stories.get(pillar, "Discipline is the bridge between goals and accomplishment.")
-    elif "Strategist" in system_prompt:
-        data = json.loads(user_input)
-        return json.dumps({"priority_pillar": data.get("pillar", "Social"), "momentum": "Paused" if data.get("state") == "negative" else "Moving"})
-    elif "Profiler" in system_prompt:
-        text = user_input.lower()
-        if any(word in text for word in ["money", "debt", "cash", "financial"]):
-            return json.dumps({"pillar": "Financial", "state": "negative", "core_issue": "Financial instability"})
-        if any(word in text for word in ["drift", "goals", "purpose", "blur"]):
-            return json.dumps({"pillar": "Spiritual", "state": "negative", "core_issue": "Lack of direction"})
-        return json.dumps({"pillar": "Social", "state": "neutral", "core_issue": "Loneliness"})
-    
-    return "Error: Persona not found."
+client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+MODEL = "claude-haiku-4-5-20251001"
+
+
+def call_llm(system_prompt: str, user_input: str) -> str:
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=1024,
+        system=[{
+            "type": "text",
+            "text": system_prompt,
+            "cache_control": {"type": "ephemeral"}
+        }],
+        messages=[{"role": "user", "content": user_input}],
+        extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"}
+    )
+    return response.content[0].text
+
 
 class ArchitectPipeline:
-    def process_journal(self, journal_text):
-        # 1. Profiler
+    def process_journal(self, journal_text: str) -> dict:
+        # 1. Profiler — extract pillar, state, core issue
         profile_json = call_llm(PROFILER_PROMPT, journal_text)
         profile = json.loads(profile_json)
-        
-        # 2. Strategist
+
+        # 2. Strategist — decide priority and momentum
         strategy_json = call_llm(STRATEGIST_PROMPT, profile_json)
         strategy = json.loads(strategy_json)
-        
-        # 3. Storyteller
+
+        # 3. Storyteller — craft the morning hero story
         story = call_llm(STORYTELLER_PROMPT, strategy_json)
-        
-        # 4. Auditor
+
+        # 4. Auditor — enforce Sharp Older Brother tone
         final_message = call_llm(AUDITOR_PROMPT, story)
-        
+
         return {
             "message": final_message,
             "pillar": profile["pillar"],
