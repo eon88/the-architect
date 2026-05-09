@@ -211,8 +211,6 @@
     <div class="os-header">
         <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
     </div>
-    <div class="user-line" id="ritual-user-line"></div>
-
     <div id="morning-view">
         <div class="ritual-header">// morning ritual</div>
         <div id="morning-message" class="ritual-message">"Loading..."</div>
@@ -235,7 +233,6 @@
     <div class="os-header">
         <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
     </div>
-    <div class="user-line" id="map-user-line"></div>
     <div class="map-title">// PILLAR MAP</div>
     <div id="pillars-grid" class="pillars-grid"></div>
     <button class="ritual-btn" onclick="showRitual()">← ritual</button>
@@ -312,20 +309,26 @@
         document.getElementById(id).innerHTML = txt;
     }
 
+    const GUEST_MESSAGES = [
+        "Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do.",
+        "The Stoics taught that clarity comes from action, not from thinking.",
+        "Discipline is the bridge between goals and accomplishment.",
+        "The Spartans knew that a man alone is a target, but a man with a tribe is a force.",
+        "Marcus Aurelius proved that true security comes from the strength of the mind, not the size of the treasury."
+    ];
+
     async function showRitual() {
         hideAll();
         document.getElementById('screen-ritual').classList.remove('hidden');
         showMorning();
-        setUserLine('ritual-user-line');
 
-        const url = userId ? `/ritual/morning/${userId}` : null;
-        if (url) {
-            const res = await fetch(url);
+        if (userId) {
+            const res = await fetch(`/ritual/morning/${userId}`);
             const data = await res.json();
             document.getElementById('morning-message').textContent = `"${data.message}"`;
         } else {
-            document.getElementById('morning-message').textContent =
-                '"Begin your journey. Create an account to track your pillars and unlock your morning ritual."';
+            const msg = GUEST_MESSAGES[Math.floor(Math.random() * GUEST_MESSAGES.length)];
+            document.getElementById('morning-message').textContent = `"${msg}"`;
         }
     }
 
@@ -342,7 +345,6 @@
     }
 
     async function submitJournal() {
-        if (!userId) { showRitual(); return; }
         const content = document.getElementById('journal-input').value.trim();
         if (!content) return;
         await fetch('/ritual/evening', {
@@ -362,8 +364,15 @@
         const grid = document.getElementById('pillars-grid');
         grid.innerHTML = '';
 
+        const PILLARS = ["Social", "Financial", "Spiritual", "Craft/Career", "Emotional/Intimacy", "Intellectual", "Legacy"];
+
         if (!userId) {
-            grid.innerHTML = '<p style="color:#444;font-size:.8rem">Sign in to view your pillar map.</p>';
+            PILLARS.forEach(name => {
+                const card = document.createElement('div');
+                card.className = 'pillar-card';
+                card.innerHTML = `<div class="pillar-name">${name.toUpperCase()}</div><div class="pillar-status">PAUSED</div>`;
+                grid.appendChild(card);
+            });
             return;
         }
 
