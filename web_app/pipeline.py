@@ -1,27 +1,29 @@
 import json
 import os
-from google import genai
-from google.genai import types
+from openai import OpenAI
 from prompts import PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT, AUDITOR_PROMPT
 
-client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+client = OpenAI(
+    api_key=os.environ.get("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1"
+)
 
-MODEL = "gemini-2.0-flash"
+MODEL = "llama-3.3-70b-versatile"
 
 
 def call_llm(system_prompt: str, user_input: str) -> str:
-    response = client.models.generate_content(
+    response = client.chat.completions.create(
         model=MODEL,
-        contents=user_input,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-        )
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_input}
+        ],
+        max_tokens=1024
     )
-    return response.text
+    return response.choices[0].message.content
 
 
 def parse_json(text: str) -> dict:
-    # Gemini sometimes wraps JSON in markdown code fences
     text = text.strip()
     if text.startswith("```"):
         text = text.split("```")[1]
