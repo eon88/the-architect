@@ -20,7 +20,9 @@ def call_llm(system_prompt: str, user_input: str) -> str:
         ],
         max_tokens=1024
     )
-    return response.choices[0].message.content
+    result = response.choices[0].message.content
+    print(f"[LLM] prompt_snippet={system_prompt[:40]!r} response={result!r}", flush=True)
+    return result
 
 
 def parse_json(text: str) -> dict:
