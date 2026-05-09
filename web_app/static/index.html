@@ -187,7 +187,7 @@
 <body>
 
 <!-- ══ AUTH SCREEN ══ -->
-<div id="screen-auth" class="screen">
+<div id="screen-auth" class="screen hidden">
     <div class="os-header">
         <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
         <div class="os-subtitle">SOVEREIGN LIFE DESIGN SYSTEM</div>
@@ -207,7 +207,7 @@
 </div>
 
 <!-- ══ RITUAL SCREEN ══ -->
-<div id="screen-ritual" class="screen hidden">
+<div id="screen-ritual" class="screen">
     <div class="os-header">
         <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
     </div>
@@ -244,6 +244,9 @@
 <script>
     let userId = null;
     let userName = "Neo";
+
+    // skip auth — load ritual immediately on page open
+    window.addEventListener('DOMContentLoaded', () => showRitual());
 
     const SEED_QUESTIONS = [
         "Who in your life actually pushes you to be better, and who is just taking up space?",
