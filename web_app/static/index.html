@@ -73,22 +73,7 @@
         .log-line.visible { opacity: 1; }
 
         /* ── welcome block ── */
-        .welcome { margin-bottom: 36px; opacity: 0; transition: opacity .6s; }
-        .welcome.visible { opacity: 1; }
-
-        .welcome-name {
-            font-size: clamp(1.5rem, 5vw, 2rem);
-            font-weight: bold;
-            letter-spacing: .06em;
-            margin-bottom: 6px;
-            text-shadow: 0 0 12px rgba(0,255,65,.5);
-        }
-
-        .tagline {
-            font-size: .82rem;
-            color: #00aa2a;
-            letter-spacing: .06em;
-        }
+        .welcome { margin-bottom: 28px; }
 
         /* ── cursor ── */
         .cursor {
@@ -239,10 +224,7 @@
 
         <div class="boot-log" id="boot-log"></div>
 
-        <div class="welcome" id="welcome-block">
-            <div class="welcome-name">Welcome, Neo.</div>
-            <div class="tagline">Ready to invest in yourself?</div>
-        </div>
+        <div class="welcome" id="welcome-block"></div>
 
         <button class="btn" id="begin-btn" onclick="enterApp()">[ BEGIN JOURNEY ]</button>
         <button class="pill-later" id="later-btn" onclick="takeBluePill()">later</button>
@@ -313,7 +295,10 @@
         { text: '> ESTABLISHING CONNECTION',     delay: 0,    pause: 0   },
         { text: '  [■■■■■■■■■■■■■■■■■■■■] OK',  delay: 400,  pause: 200 },
         { text: '> DECRYPTING IDENTITY...',      delay: 0,    pause: 640 },
-        { text: '  STATUS: AUTHORIZED',          delay: 0,    pause: 800 },
+        { text: '  STATUS: AUTHORIZED',          delay: 0,    pause: 900 },
+        { text: '',                              delay: 0,    pause: 100 },
+        { text: '> Welcome, Neo.',               delay: 0,    pause: 200, welcome: true },
+        { text: '> Ready to invest in yourself?', delay: 0,   pause: 0,   welcome: true },
     ];
 
     async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -334,20 +319,21 @@
         cursorEl.innerHTML = '<span class="cursor"></span>';
         log.appendChild(cursorEl);
 
+        const welcome = document.getElementById('welcome-block');
+
         for (const line of BOOT_LINES) {
             await sleep(line.delay || 0);
+            const parent = line.welcome ? welcome : log;
             const el = document.createElement('div');
             el.className = 'log-line';
-            log.insertBefore(el, cursorEl);
+            parent === log ? log.insertBefore(el, cursorEl) : parent.appendChild(el);
             await typewriterLine(el, line.text, 22);
             await sleep(line.pause || 0);
         }
 
-        // remove cursor, reveal welcome + button
+        // remove cursor, show buttons
         cursorEl.remove();
-        await sleep(300);
-        document.getElementById('welcome-block').classList.add('visible');
-        await sleep(500);
+        await sleep(400);
         document.getElementById('begin-btn').classList.add('visible');
         document.getElementById('later-btn').classList.add('visible');
     }
