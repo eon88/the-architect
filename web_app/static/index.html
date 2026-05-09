@@ -146,25 +146,24 @@
         .hidden { display: none !important; }
 
         .s-label {
-            font-size: .65rem;
-            color: #006010;
-            letter-spacing: .2em;
+            font-size: .62rem;
+            color: #3a8a3a;
+            letter-spacing: .22em;
             text-transform: uppercase;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .ritual-msg {
-            font-size: 1rem;
-            line-height: 1.8;
-            color: #00cc33;
+            font-size: 1.05rem;
+            line-height: 1.9;
+            color: #d4f5d4;
             font-style: italic;
             margin-bottom: 40px;
-            text-shadow: 0 0 8px rgba(0,255,65,.2);
         }
 
         .nav-link {
             font-size: .72rem;
-            color: #006010;
+            color: #3a7a3a;
             cursor: pointer;
             letter-spacing: .08em;
             background: none;
@@ -179,25 +178,30 @@
             width: 100%;
             height: 140px;
             resize: none;
-            background: transparent;
-            border: 1px solid #004a00;
-            color: var(--green);
+            background: rgba(0,255,65,.025);
+            border: 1px solid #1e5a1e;
+            color: #d4f5d4;
             font-family: inherit;
-            font-size: .9rem;
-            padding: 12px;
+            font-size: .92rem;
+            padding: 14px;
             outline: none;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
+            line-height: 1.7;
             transition: border-color .2s;
         }
-        textarea.input:focus { border-color: var(--green); }
-        textarea.input::placeholder { color: #003300; }
+        textarea.input:focus { border-color: #3aaa3a; }
+        textarea.input::placeholder { color: #1e4a1e; }
 
-        .seed-q { font-size: .8rem; color: #006010; margin-bottom: 16px; line-height: 1.6; }
+        .seed-q {
+            font-size: .9rem;
+            color: #8acc8a;
+            margin-bottom: 18px;
+            line-height: 1.75;
+        }
 
         .submit-btn {
-            display: block;
-            width: 100%;
-            padding: 13px;
+            display: inline-block;
+            padding: 11px 32px;
             font-family: inherit;
             font-size: .78rem;
             font-weight: bold;
@@ -206,13 +210,13 @@
             background: var(--green);
             border: none;
             cursor: pointer;
-            margin-bottom: 14px;
-            transition: background .2s;
+            margin-bottom: 18px;
+            transition: background .2s, box-shadow .2s;
         }
-        .submit-btn:hover { background: #fff; }
+        .submit-btn:hover { background: #fff; box-shadow: 0 0 16px rgba(0,255,65,.3); }
 
         /* map */
-        .map-title { font-size: .9rem; font-weight: bold; letter-spacing: .2em; margin-bottom: 24px; }
+        .map-title { font-size: .85rem; font-weight: bold; letter-spacing: .22em; color: #8acc8a; margin-bottom: 24px; }
 
         .pillars-grid {
             display: grid;
@@ -221,9 +225,9 @@
             margin-bottom: 28px;
         }
 
-        .pillar-card { border: 1px solid #003300; padding: 14px 12px; }
-        .pillar-name { font-size: .7rem; font-weight: bold; letter-spacing: .08em; margin-bottom: 4px; }
-        .pillar-status { font-size: .58rem; letter-spacing: .15em; color: #005500; }
+        .pillar-card { border: 1px solid #1e4a1e; padding: 14px 12px; }
+        .pillar-name { font-size: .7rem; font-weight: bold; letter-spacing: .08em; margin-bottom: 5px; color: #d4f5d4; }
+        .pillar-status { font-size: .58rem; letter-spacing: .15em; color: #3a7a3a; }
     </style>
 </head>
 <body>
@@ -249,8 +253,8 @@
 <div id="screen-ritual" class="screen hidden">
     <div class="terminal">
         <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-        <div class="s-label">// morning ritual</div>
         <div id="morning-view">
+            <div class="s-label">// morning ritual</div>
             <div id="morning-message" class="ritual-msg">"..."</div>
             <button class="nav-link" onclick="showEvening()">evening journal →</button>
             &nbsp;&nbsp;
