@@ -8,19 +8,9 @@ def call_llm(system_prompt, user_input):
     Simplified mock LLM for the web app. 
     This will be replaced by the actual API call in the final version.
     """
-    if "Profiler" in system_prompt:
-        text = user_input.lower()
-        if any(word in text for word in ["money", "debt", "cash", "financial"]):
-            return json.dumps({"pillar": "Financial", "state": "negative", "core_issue": "Financial instability"})
-        if any(word in text for word in ["drift", "goals", "purpose", "blur"]):
-            return json.dumps({"pillar": "Spiritual", "state": "negative", "core_issue": "Lack of direction"})
-        return json.dumps({"pillar": "Social", "state": "neutral", "core_issue": "Loneliness"})
-    
-    if "Strategist" in system_prompt:
-        data = json.loads(user_input)
-        return json.dumps({"priority_pillar": data.get("pillar", "Social"), "momentum": "Paused" if data.get("state") == "negative" else "Moving"})
-    
-    if "Storyteller" in system_prompt:
+    if "Tone Auditor" in system_prompt:
+        return f"Listen — {user_input} Stop worrying about the noise and focus on the work. That's how you win."
+    elif "Storyteller" in system_prompt:
         strategy = json.loads(user_input)
         pillar = strategy.get("priority_pillar", "Social")
         stories = {
@@ -29,9 +19,16 @@ def call_llm(system_prompt, user_input):
             "Social": "The Spartans knew that a man alone is a target, but a man with a tribe is a force."
         }
         return stories.get(pillar, "Discipline is the bridge between goals and accomplishment.")
-    
-    if "Auditor" in system_prompt:
-        return f"Listen, {user_input} Stop worrying about the noise and focus on the work. That's how you win."
+    elif "Strategist" in system_prompt:
+        data = json.loads(user_input)
+        return json.dumps({"priority_pillar": data.get("pillar", "Social"), "momentum": "Paused" if data.get("state") == "negative" else "Moving"})
+    elif "Profiler" in system_prompt:
+        text = user_input.lower()
+        if any(word in text for word in ["money", "debt", "cash", "financial"]):
+            return json.dumps({"pillar": "Financial", "state": "negative", "core_issue": "Financial instability"})
+        if any(word in text for word in ["drift", "goals", "purpose", "blur"]):
+            return json.dumps({"pillar": "Spiritual", "state": "negative", "core_issue": "Lack of direction"})
+        return json.dumps({"pillar": "Social", "state": "neutral", "core_issue": "Loneliness"})
     
     return "Error: Persona not found."
 
