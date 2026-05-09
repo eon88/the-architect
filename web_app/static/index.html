@@ -18,232 +18,187 @@
             padding: 24px;
         }
 
-        /* subtle scanline overlay */
         body::after {
             content: '';
             position: fixed;
             inset: 0;
             background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0,0,0,.07) 2px,
-                rgba(0,0,0,.07) 4px
+                0deg, transparent, transparent 2px,
+                rgba(0,0,0,.07) 2px, rgba(0,0,0,.07) 4px
             );
             pointer-events: none;
             z-index: 999;
         }
 
         .screen { width: 100%; max-width: 420px; }
-
-        /* ── shared util ── */
         .hidden { display: none !important; }
 
-        /* ── OS header ── */
-        .os-header { margin-bottom: 40px; }
-        .os-title {
-            font-size: clamp(1.1rem, 4vw, 1.4rem);
-            font-weight: bold;
+        .os-label {
+            font-size: .75rem;
+            color: #444;
             letter-spacing: .15em;
-            color: #fff;
+            margin-bottom: 48px;
         }
-        .os-subtitle { font-size: .75rem; color: #555; letter-spacing: .1em; margin-top: 4px; }
 
-        /* ── welcome block ── */
         .welcome-line {
-            font-size: clamp(1.4rem, 5vw, 1.9rem);
+            font-size: clamp(1.6rem, 6vw, 2.2rem);
             font-weight: bold;
             color: #fff;
-            margin-bottom: 6px;
-        }
-        .tagline { font-size: .85rem; color: #666; margin-bottom: 32px; }
-
-        /* ── error banner ── */
-        .error-msg {
-            font-size: .8rem;
-            color: #ff4444;
-            border: 1px solid #ff4444;
-            padding: 8px 14px;
-            margin-bottom: 20px;
-            letter-spacing: .04em;
+            margin-bottom: 8px;
         }
 
-        /* ── form inputs ── */
-        .field {
-            width: 100%;
-            background: transparent;
-            border: none;
-            border-bottom: 1px solid #333;
-            color: #e5e5e5;
-            font-family: inherit;
-            font-size: .95rem;
-            padding: 12px 0;
-            margin-bottom: 20px;
-            outline: none;
-            transition: border-color .2s;
+        .tagline {
+            font-size: .9rem;
+            color: #555;
+            margin-bottom: 56px;
+            letter-spacing: .03em;
         }
-        .field::placeholder { color: #444; }
-        .field:focus { border-bottom-color: #fff; }
 
-        /* ── buttons ── */
         .btn {
             display: block;
             width: 100%;
-            padding: 14px;
+            padding: 16px;
             font-family: inherit;
             font-size: .85rem;
             font-weight: bold;
-            letter-spacing: .12em;
+            letter-spacing: .14em;
             cursor: pointer;
-            border: none;
-            transition: opacity .2s;
-            margin-bottom: 12px;
+            border: 1px solid #e5e5e5;
+            background: transparent;
+            color: #e5e5e5;
+            transition: background .2s, color .2s;
         }
-        .btn:hover { opacity: .85; }
-        .btn-primary { background: #fff; color: #000; }
-        .btn:disabled { opacity: .4; cursor: not-allowed; }
+        .btn:hover { background: #e5e5e5; color: #000; }
 
-        .link-later {
-            display: block;
-            text-align: center;
-            font-size: .75rem;
-            color: #444;
-            cursor: pointer;
-            letter-spacing: .08em;
-            margin-top: 8px;
-            transition: color .2s;
-        }
-        .link-later:hover { color: #888; }
-
-        /* ── ritual / dashboard screens ── */
-        .ritual-header {
+        /* ── ritual ── */
+        .ritual-label {
             font-size: .65rem;
             letter-spacing: .2em;
-            color: #555;
+            color: #444;
             text-transform: uppercase;
             margin-bottom: 28px;
         }
+
         .ritual-message {
             font-size: 1.05rem;
-            line-height: 1.7;
+            line-height: 1.75;
             color: #ccc;
             font-style: italic;
-            margin-bottom: 40px;
+            margin-bottom: 48px;
         }
-        .ritual-btn {
+
+        .nav-link {
             font-size: .75rem;
-            color: #555;
+            color: #444;
             cursor: pointer;
             letter-spacing: .08em;
             background: none;
             border: none;
             font-family: inherit;
             text-decoration: underline;
+            transition: color .2s;
         }
-        .ritual-btn:hover { color: #ccc; }
+        .nav-link:hover { color: #ccc; }
 
-        textarea.field {
+        textarea.input {
+            width: 100%;
             height: 160px;
             resize: none;
+            background: transparent;
             border: 1px solid #222;
+            color: #e5e5e5;
+            font-family: inherit;
+            font-size: .95rem;
             padding: 14px;
+            outline: none;
             margin-bottom: 20px;
+            transition: border-color .2s;
         }
-        textarea.field:focus { border-color: #555; }
+        textarea.input:focus { border-color: #555; }
+
+        .seed-q {
+            font-size: .85rem;
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
 
         /* ── pillar map ── */
         .map-title {
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: bold;
-            letter-spacing: .15em;
+            letter-spacing: .2em;
             color: #fff;
             margin-bottom: 28px;
         }
+
         .pillars-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 12px;
-            margin-bottom: 28px;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 32px;
         }
+
         .pillar-card {
             border: 1px solid #1a1a1a;
-            padding: 18px 14px;
-            transition: border-color .2s;
+            padding: 16px 12px;
         }
-        .pillar-card.moving { border-color: #e5e5e5; }
-        .pillar-name { font-size: .8rem; font-weight: bold; letter-spacing: .08em; margin-bottom: 6px; }
-        .pillar-status { font-size: .65rem; letter-spacing: .15em; color: #555; }
-        .pillar-card.moving .pillar-status { color: #e5e5e5; }
 
-        .user-line {
-            font-size: .7rem;
-            color: #444;
-            letter-spacing: .08em;
-            margin-bottom: 40px;
-        }
-        .user-line span { color: #888; }
+        .pillar-name { font-size: .75rem; font-weight: bold; letter-spacing: .08em; margin-bottom: 4px; }
+        .pillar-status { font-size: .6rem; letter-spacing: .15em; color: #444; }
     </style>
 </head>
 <body>
 
-<!-- ══ AUTH SCREEN ══ -->
-<div id="screen-auth" class="screen hidden">
-    <div class="os-header">
-        <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
-        <div class="os-subtitle">SOVEREIGN LIFE DESIGN SYSTEM</div>
-    </div>
-
-    <div class="welcome-line" id="welcome-name">Welcome, Neo.</div>
+<!-- ══ GREETING ══ -->
+<div id="screen-greeting" class="screen">
+    <div class="os-label">&gt; ARCHITECT_OS v1.0</div>
+    <div class="welcome-line">Welcome, Neo.</div>
     <div class="tagline">Ready to invest in yourself?</div>
-
-    <div id="auth-error" class="error-msg hidden"></div>
-
-    <input id="field-name" class="field" type="text" placeholder="your name" autocomplete="name" />
-    <input id="field-email" class="field" type="email" placeholder="email" autocomplete="email" />
-    <input id="field-password" class="field" type="password" placeholder="password" autocomplete="current-password" />
-
-    <button id="btn-register" class="btn btn-primary" onclick="doRegister()">[ CREATE ACCOUNT ]</button>
-    <span class="link-later" onclick="skipAuth()">later</span>
+    <button class="btn" onclick="showRitual()">[ BEGIN JOURNEY ]</button>
 </div>
 
-<!-- ══ RITUAL SCREEN ══ -->
-<div id="screen-ritual" class="screen">
-    <div class="os-header">
-        <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
-    </div>
+<!-- ══ RITUAL ══ -->
+<div id="screen-ritual" class="screen hidden">
+    <div class="os-label">&gt; ARCHITECT_OS v1.0</div>
+
     <div id="morning-view">
-        <div class="ritual-header">// morning ritual</div>
+        <div class="ritual-label">// morning ritual</div>
         <div id="morning-message" class="ritual-message">"Loading..."</div>
-        <button class="ritual-btn" onclick="showEvening()">evening journal →</button>
+        <button class="nav-link" onclick="showEvening()">evening journal →</button>
         &nbsp;&nbsp;
-        <button class="ritual-btn" onclick="showMap()">pillar map →</button>
+        <button class="nav-link" onclick="showMap()">pillar map →</button>
     </div>
 
     <div id="evening-view" class="hidden">
-        <div class="ritual-header">// evening reflection</div>
-        <div id="seed-question" class="tagline" style="margin-bottom:20px"></div>
-        <textarea id="journal-input" class="field" placeholder="write here..."></textarea>
-        <button class="btn btn-primary" onclick="submitJournal()">[ SUBMIT ]</button>
-        <button class="ritual-btn" style="margin-top:12px" onclick="showMorning()">← back</button>
+        <div class="ritual-label">// evening reflection</div>
+        <div id="seed-question" class="seed-q"></div>
+        <textarea id="journal-input" class="input" placeholder="write here..."></textarea>
+        <button class="btn" style="margin-bottom:16px" onclick="submitJournal()">[ SUBMIT ]</button>
+        <button class="nav-link" onclick="showMorning()">← back</button>
     </div>
 </div>
 
-<!-- ══ MAP SCREEN ══ -->
+<!-- ══ MAP ══ -->
 <div id="screen-map" class="screen hidden">
-    <div class="os-header">
-        <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
-    </div>
+    <div class="os-label">&gt; ARCHITECT_OS v1.0</div>
     <div class="map-title">// PILLAR MAP</div>
     <div id="pillars-grid" class="pillars-grid"></div>
-    <button class="ritual-btn" onclick="showRitual()">← ritual</button>
+    <button class="nav-link" onclick="showRitual()">← ritual</button>
 </div>
 
 <script>
-    let userId = null;
-    let userName = "Neo";
+    const PILLARS = ["Social", "Financial", "Spiritual", "Craft/Career", "Emotional/Intimacy", "Intellectual", "Legacy"];
 
-    // skip auth — load ritual immediately on page open
-    window.addEventListener('DOMContentLoaded', () => showRitual());
+    const MORNING_MESSAGES = [
+        "Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do.",
+        "The Stoics taught that clarity comes from action, not from thinking.",
+        "Discipline is the bridge between goals and accomplishment.",
+        "The Spartans knew that a man alone is a target, but a man with a tribe is a force.",
+        "Marcus Aurelius proved that true security comes from the strength of the mind, not the size of the treasury.",
+        "The man who moves a mountain begins by carrying away small stones.",
+        "You do not rise to the level of your goals. You fall to the level of your systems."
+    ];
 
     const SEED_QUESTIONS = [
         "Who in your life actually pushes you to be better, and who is just taking up space?",
@@ -251,85 +206,22 @@
         "When was the last time you felt peace without a screen or distraction?",
         "What is one skill you'd spend 10,000 hours mastering just for pride?",
         "Do the people closest to you feel seen and heard by you?",
-        "What belief did you hold for years that you now know is wrong?",
+        "What belief did you held for years that you now know is wrong?",
         "If you disappeared tomorrow, what would the world actually miss?"
     ];
 
-    function showError(msg) {
-        const el = document.getElementById('auth-error');
-        el.textContent = msg;
-        el.classList.remove('hidden');
+    function hideAll() {
+        document.getElementById('screen-greeting').classList.add('hidden');
+        document.getElementById('screen-ritual').classList.add('hidden');
+        document.getElementById('screen-map').classList.add('hidden');
     }
 
-    function clearError() {
-        document.getElementById('auth-error').classList.add('hidden');
-    }
-
-    async function doRegister() {
-        const email = document.getElementById('field-email').value.trim();
-        const password = document.getElementById('field-password').value;
-        const name = document.getElementById('field-name').value.trim();
-        if (!email || !password) { showError('Email and password are required.'); return; }
-        if (password.length < 6) { showError('Password must be at least 6 characters.'); return; }
-        clearError();
-        setBusy(true);
-        let res = await fetch('/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, name })
-        });
-        // existing account — try logging in with the same credentials
-        if (res.status === 409) {
-            res = await fetch('/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-        }
-        setBusy(false);
-        if (!res.ok) { const d = await res.json(); showError(d.detail || 'Wrong email or password.'); return; }
-        const data = await res.json();
-        userId = data.user_id;
-        userName = data.name || email.split('@')[0];
-        showRitual();
-    }
-
-    function skipAuth() {
-        userId = null;
-        userName = "Guest";
-        showRitual();
-    }
-
-    function setBusy(busy) {
-        document.getElementById('btn-register').disabled = busy;
-    }
-
-    function setUserLine(id) {
-        const txt = userId ? `user: <span>${userName}</span>` : `user: <span>guest</span>`;
-        document.getElementById(id).innerHTML = txt;
-    }
-
-    const GUEST_MESSAGES = [
-        "Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do.",
-        "The Stoics taught that clarity comes from action, not from thinking.",
-        "Discipline is the bridge between goals and accomplishment.",
-        "The Spartans knew that a man alone is a target, but a man with a tribe is a force.",
-        "Marcus Aurelius proved that true security comes from the strength of the mind, not the size of the treasury."
-    ];
-
-    async function showRitual() {
+    function showRitual() {
         hideAll();
         document.getElementById('screen-ritual').classList.remove('hidden');
         showMorning();
-
-        if (userId) {
-            const res = await fetch(`/ritual/morning/${userId}`);
-            const data = await res.json();
-            document.getElementById('morning-message').textContent = `"${data.message}"`;
-        } else {
-            const msg = GUEST_MESSAGES[Math.floor(Math.random() * GUEST_MESSAGES.length)];
-            document.getElementById('morning-message').textContent = `"${msg}"`;
-        }
+        const msg = MORNING_MESSAGES[Math.floor(Math.random() * MORNING_MESSAGES.length)];
+        document.getElementById('morning-message').textContent = `"${msg}"`;
     }
 
     function showMorning() {
@@ -344,64 +236,28 @@
         document.getElementById('seed-question').textContent = q;
     }
 
-    async function submitJournal() {
-        const content = document.getElementById('journal-input').value.trim();
-        if (!content) return;
-        await fetch('/ritual/evening', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, content })
-        });
+    function submitJournal() {
         document.getElementById('journal-input').value = '';
         showRitual();
     }
 
-    async function showMap() {
+    function showMap() {
         hideAll();
         document.getElementById('screen-map').classList.remove('hidden');
-        setUserLine('map-user-line');
-
         const grid = document.getElementById('pillars-grid');
         grid.innerHTML = '';
-
-        const PILLARS = ["Social", "Financial", "Spiritual", "Craft/Career", "Emotional/Intimacy", "Intellectual", "Legacy"];
-
-        if (!userId) {
-            PILLARS.forEach(name => {
-                const card = document.createElement('div');
-                card.className = 'pillar-card';
-                card.innerHTML = `<div class="pillar-name">${name.toUpperCase()}</div><div class="pillar-status">PAUSED</div>`;
-                grid.appendChild(card);
-            });
-            return;
-        }
-
-        const res = await fetch(`/user/pillars/${userId}`);
-        const pillars = await res.json();
-        pillars.forEach(p => {
+        PILLARS.forEach(name => {
             const card = document.createElement('div');
-            card.className = `pillar-card${p.status === 'Moving' ? ' moving' : ''}`;
-            card.innerHTML = `
-                <div class="pillar-name">${p.name.toUpperCase()}</div>
-                <div class="pillar-status">${p.status.toUpperCase()}</div>
-            `;
+            card.className = 'pillar-card';
+            card.innerHTML = `<div class="pillar-name">${name.toUpperCase()}</div><div class="pillar-status">PAUSED</div>`;
             grid.appendChild(card);
         });
     }
 
-    function hideAll() {
-        document.getElementById('screen-auth').classList.add('hidden');
-        document.getElementById('screen-ritual').classList.add('hidden');
-        document.getElementById('screen-map').classList.add('hidden');
-    }
-
     window.addEventListener('keydown', e => {
-        if (e.key === 'm' && userId) showMap();
+        if (e.key === 'm') showMap();
         if (e.key === 'r') showRitual();
-        if (e.key === 'Escape') {
-            hideAll();
-            document.getElementById('screen-auth').classList.remove('hidden');
-        }
+        if (e.key === 'Escape') { hideAll(); document.getElementById('screen-greeting').classList.remove('hidden'); }
     });
 </script>
 </body>
