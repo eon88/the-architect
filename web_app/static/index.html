@@ -88,11 +88,12 @@
         /* ── button ── */
         .btn {
             display: block;
-            padding: 13px 28px;
+            padding: 13px 20px;
             font-family: inherit;
-            font-size: .82rem;
+            font-size: clamp(.62rem, 2.5vw, .82rem);
             font-weight: bold;
-            letter-spacing: .16em;
+            letter-spacing: .08em;
+            white-space: nowrap;
             color: #000;
             background: var(--green);
             border: none;
