@@ -158,11 +158,12 @@
   #app {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
   }
 
   #app-header {
-    padding: .55rem 1.2rem;
+    padding: .5rem 1.2rem;
     border-bottom: 1px solid var(--border);
     font-size: .72rem;
     letter-spacing: .08em;
@@ -170,49 +171,103 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(0,10,4,0.98);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    background: #000;
+    flex-shrink: 0;
   }
 
   #header-title { color: var(--green); font-weight: bold; }
   #header-date  { font-size: .68rem; }
 
-  #app-content {
+  /* ─── 3-COLUMN LAYOUT ─── */
+  #dashboard {
     flex: 1;
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    gap: 0;
+    overflow: hidden;
+    padding: 1.2rem;
+    gap: 1rem;
+  }
+
+  .dash-panel {
+    border: 1px solid var(--green-dim);
+    border-radius: 4px;
+    background: #000;
+    overflow: hidden;
+  }
+
+  /* Left nav */
+  #panel-nav {
+    display: flex;
+    flex-direction: column;
+    padding: 1.2rem 0;
+  }
+
+  .nav-item {
+    padding: .9rem 1.4rem;
+    font-size: .85rem;
+    color: var(--green-dim);
+    cursor: pointer;
+    letter-spacing: .05em;
+    transition: color .15s, background .15s;
+    border-left: 2px solid transparent;
+  }
+
+  .nav-item:hover { color: var(--green); background: rgba(0,255,65,0.04); }
+  .nav-item.active { color: var(--green); border-left-color: var(--green); }
+
+  /* Center content */
+  #panel-main {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem 1rem;
   }
 
-  #dashboard-placeholder {
-    text-align: center;
+  #main-placeholder {
     color: var(--text-dim);
-    font-size: .78rem;
-    letter-spacing: .08em;
-    line-height: 2;
+    font-size: .75rem;
+    letter-spacing: .1em;
   }
 
-  #dashboard-placeholder .cursor {
+  #main-placeholder .cursor {
     display: inline-block;
-    width: 8px;
-    height: 1em;
+    width: 8px; height: 1em;
     background: var(--green);
     vertical-align: text-bottom;
     animation: blink 1s step-end infinite;
   }
 
-  @keyframes blink {
-    50% { opacity: 0; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Right mode switcher */
+  #panel-modes {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    padding: 1.2rem 0;
   }
+
+  .mode-item {
+    padding: 1rem 1.2rem;
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--green-dim);
+    cursor: pointer;
+    letter-spacing: .08em;
+    text-align: center;
+    transition: color .15s, background .15s;
+    border-right: 2px solid transparent;
+  }
+
+  .mode-item:hover { color: var(--green); background: rgba(0,255,65,0.04); }
+  .mode-item.active { color: var(--green); border-right-color: var(--green); }
 
   /* ─── UTILITIES ─── */
   .hidden { display: none !important; }
 
-  @media (max-width: 400px) {
-    #boot-box { padding: 1.5rem 1.2rem; }
+  @media (max-width: 600px) {
+    #dashboard { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; padding: .6rem; gap: .6rem; }
+    #boot-box  { padding: 1.5rem 1.2rem; }
   }
 </style>
 </head>
@@ -247,11 +302,28 @@
     <span id="header-date"></span>
   </header>
 
-  <div id="app-content">
-    <div id="dashboard-placeholder">
-      // DASHBOARD INITIALISING<br>
-      <span class="cursor"></span>
+  <div id="dashboard">
+
+    <!-- LEFT: navigation -->
+    <div class="dash-panel" id="panel-nav">
+      <div class="nav-item active" onclick="selectNav(this)">vision board</div>
+      <div class="nav-item"       onclick="selectNav(this)">pillars</div>
+      <div class="nav-item"       onclick="selectNav(this)">journal</div>
+      <div class="nav-item"       onclick="selectNav(this)">reminders</div>
     </div>
+
+    <!-- CENTER: main content -->
+    <div class="dash-panel" id="panel-main">
+      <div id="main-placeholder">// SELECT A MODULE<span class="cursor"></span></div>
+    </div>
+
+    <!-- RIGHT: mode switcher -->
+    <div class="dash-panel" id="panel-modes">
+      <div class="mode-item active" onclick="selectMode(this)">ARCHITECT</div>
+      <div class="mode-item"       onclick="selectMode(this)">ADMIN</div>
+      <div class="mode-item"       onclick="selectMode(this)">DOER</div>
+    </div>
+
   </div>
 </div>
 
@@ -380,6 +452,16 @@ function launchApp() {
   document.getElementById('screen-greeting').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   updateHeaderDate();
+}
+
+function selectNav(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function selectMode(el) {
+  document.querySelectorAll('.mode-item').forEach(m => m.classList.remove('active'));
+  el.classList.add('active');
 }
 
 function updateHeaderDate() {
