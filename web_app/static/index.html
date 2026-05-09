@@ -205,14 +205,28 @@
 
         .pillars-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 10px;
             margin-bottom: 28px;
         }
 
-        .pillar-card { border: 1px solid #1e4a1e; padding: 14px 12px; }
-        .pillar-name { font-size: .7rem; font-weight: bold; letter-spacing: .08em; margin-bottom: 5px; color: #d4f5d4; }
+        .pillar-card {
+            border: 1px solid #1e4a1e;
+            padding: 16px 14px;
+            min-height: 70px;
+        }
+        .pillar-card.moving { border-color: #3aaa3a; }
+        .pillar-name {
+            font-size: .68rem;
+            font-weight: bold;
+            letter-spacing: .06em;
+            margin-bottom: 6px;
+            color: #d4f5d4;
+            word-break: break-word;
+            line-height: 1.4;
+        }
         .pillar-status { font-size: .58rem; letter-spacing: .15em; color: #3a7a3a; }
+        .pillar-card.moving .pillar-status { color: var(--green); }
     </style>
 </head>
 <body>
@@ -304,6 +318,20 @@
         localStorage.setItem('arch_journal_count', s.journalCount);
         localStorage.setItem('arch_q_index', s.qIndex);
         if (s.lastPillar) localStorage.setItem('arch_last_pillar', s.lastPillar);
+    }
+
+    function getPillarStates() {
+        const stored = localStorage.getItem('arch_pillar_states');
+        if (stored) return JSON.parse(stored);
+        const states = {};
+        PILLARS.forEach(p => states[p] = 'PAUSED');
+        return states;
+    }
+
+    function setPillarMoving(pillar) {
+        const states = getPillarStates();
+        states[pillar] = 'MOVING';
+        localStorage.setItem('arch_pillar_states', JSON.stringify(states));
     }
 
     /* ── boot sequence ── */
@@ -422,6 +450,7 @@
         const { journalCount, qIndex } = getState();
         const entry = SEED_QUESTIONS[qIndex % SEED_QUESTIONS.length];
         saveState({ journalCount: journalCount + 1, qIndex: qIndex + 1, lastPillar: entry.pillar });
+        setPillarMoving(entry.pillar);
         showRitual();
     }
 
@@ -429,11 +458,13 @@
         hideAll();
         document.getElementById('screen-map').classList.remove('hidden');
         const grid = document.getElementById('pillars-grid');
+        const states = getPillarStates();
         grid.innerHTML = '';
         PILLARS.forEach(name => {
+            const status = states[name] || 'PAUSED';
             const card = document.createElement('div');
-            card.className = 'pillar-card';
-            card.innerHTML = `<div class="pillar-name">${name.toUpperCase()}</div><div class="pillar-status">PAUSED</div>`;
+            card.className = `pillar-card${status === 'MOVING' ? ' moving' : ''}`;
+            card.innerHTML = `<div class="pillar-name">${name.toUpperCase()}</div><div class="pillar-status">${status}</div>`;
             grid.appendChild(card);
         });
     }
