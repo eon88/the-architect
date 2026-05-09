@@ -76,10 +76,16 @@
         async function showRitual() {
             hideAll();
             document.getElementById('screen-ritual').classList.remove('hidden');
-            const res = await fetch(`/ritual/morning/${userId}`);
-            const data = await res.json();
-            document.getElementById('morning-message').innerText = data.message;
+            document.getElementById('morning-message').innerText = 'Loading your story...';
             document.getElementById('morning-view').classList.remove('hidden');
+            try {
+                const res = await fetch(`/ritual/morning/${userId}`);
+                if (!res.ok) throw new Error(`Server error ${res.status}`);
+                const data = await res.json();
+                document.getElementById('morning-message').innerText = data.message;
+            } catch (err) {
+                document.getElementById('morning-message').innerText = 'Could not load your morning message. Check back in a moment.';
+            }
         }
 
         function showEvening() {
