@@ -54,52 +54,90 @@
   }
 
   #boot-box {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--panel-bg);
-    padding: 2.2rem 2.6rem;
-    max-width: 560px;
+    border: 2px solid var(--green-dim);
+    border-radius: 10px;
+    background: #000;
+    padding: 0;
+    max-width: 480px;
     width: 100%;
-    box-shadow: 0 0 40px rgba(0,255,65,0.08);
+    box-shadow: 0 0 40px rgba(0,255,65,0.1), inset 0 0 60px rgba(0,0,0,0.8);
+    overflow: hidden;
+  }
+
+  #boot-titlebar {
+    padding: .65rem 1rem;
+    display: flex;
+    gap: .45rem;
+    align-items: center;
+    border-bottom: 1px solid rgba(0,255,65,0.12);
+  }
+
+  .titlebar-dot {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: rgba(0,255,65,0.25);
+    border: 1px solid rgba(0,255,65,0.4);
+  }
+
+  #boot-body {
+    padding: 1.8rem 2rem 2rem;
   }
 
   #boot-log {
-    min-height: 220px;
+    min-height: 240px;
     font-size: .82rem;
-    line-height: 1.7;
-    white-space: pre-wrap;
+    line-height: 1.9;
     color: var(--green-dim);
   }
 
+  #boot-log .line { display: flex; align-items: baseline; gap: .5rem; }
+  #boot-log .prompt { color: var(--green); flex-shrink: 0; }
   #boot-log .hl { color: var(--green); font-weight: bold; }
 
+  #boot-log .prog-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding-left: 1.2rem;
+    font-size: .78rem;
+    margin-top: -.35rem;
+    margin-bottom: .1rem;
+  }
+
+  #boot-log .prog-bar {
+    display: inline-block;
+    color: var(--green);
+    letter-spacing: -.02em;
+  }
+
+  #boot-log .ok { color: var(--green); font-weight: bold; }
+
   #greeting-actions {
-    margin-top: 2rem;
+    margin-top: 1.8rem;
     display: flex;
     flex-direction: column;
-    gap: .75rem;
-    align-items: center;
+    gap: .6rem;
+    align-items: stretch;
   }
 
   #btn-red-pill {
-    background: transparent;
-    border: 1px solid var(--green);
-    color: var(--green);
+    background: var(--green);
+    border: none;
+    color: #000;
     font-family: inherit;
-    font-size: clamp(.62rem, 2.5vw, .82rem);
-    letter-spacing: .1em;
-    padding: .65rem 1.6rem;
+    font-size: clamp(.7rem, 2.5vw, .88rem);
+    font-weight: bold;
+    letter-spacing: .12em;
+    padding: .9rem 1.6rem;
     cursor: pointer;
-    border-radius: 3px;
-    transition: background .2s, color .2s, border-color .2s;
+    border-radius: 4px;
+    transition: background .15s, box-shadow .15s;
     white-space: nowrap;
+    text-align: center;
   }
 
-  #btn-red-pill:hover, #btn-red-pill:active {
-    background: var(--red);
-    border-color: var(--red);
-    color: #fff;
-  }
+  #btn-red-pill:hover { background: #00e639; box-shadow: 0 0 18px rgba(0,255,65,0.4); }
+  #btn-red-pill:active { background: var(--red); color: #fff; }
 
   #btn-blue-pill {
     background: transparent;
@@ -110,14 +148,11 @@
     cursor: pointer;
     letter-spacing: .06em;
     padding: .3rem .8rem;
-    border-radius: 3px;
-    transition: background .2s, color .2s;
+    text-align: center;
+    transition: color .2s;
   }
 
-  #btn-blue-pill:hover, #btn-blue-pill:active {
-    background: rgba(51,153,255,0.15);
-    color: var(--blue);
-  }
+  #btn-blue-pill:hover { color: var(--blue); }
 
   /* ─── APP SHELL ─── */
   #app {
@@ -188,10 +223,17 @@
 ════════════════════════════════════════════════ -->
 <div id="screen-greeting">
   <div id="boot-box">
-    <div id="boot-log"></div>
-    <div id="greeting-actions" class="hidden">
-      <button id="btn-red-pill">[ TAKE THE RED PILL ]</button>
-      <button id="btn-blue-pill">not today — blue pill</button>
+    <div id="boot-titlebar">
+      <div class="titlebar-dot"></div>
+      <div class="titlebar-dot"></div>
+      <div class="titlebar-dot"></div>
+    </div>
+    <div id="boot-body">
+      <div id="boot-log"></div>
+      <div id="greeting-actions" class="hidden">
+        <button id="btn-red-pill">[ TAKE THE RED PILL ]</button>
+        <button id="btn-blue-pill">later</button>
+      </div>
     </div>
   </div>
 </div>
@@ -217,50 +259,105 @@
 // ════════════════════════════════════════════════
 //  BOOT SEQUENCE
 // ════════════════════════════════════════════════
-const BOOT_LINES = [
-  { text: 'ARCHITECT_OS v1.0 — initialising...',         delay: 60 },
-  { text: 'loading core modules...',                      delay: 40 },
-  { text: 'scanning pillar matrix... [7 pillars found]',  delay: 40 },
-  { text: 'calibrating signal...',                        delay: 40 },
-  { text: '---',                                          delay: 20 },
-  { text: 'Welcome, Neo.',                                delay: 55 },
-  { text: 'Ready to invest in yourself?',                 delay: 55 },
-  { text: '---',                                          delay: 20 },
-  { text: 'Choose your path:',                            delay: 40 },
-];
-
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function typeText(el, text, charDelay) {
-  if (text === '---') {
-    el.innerHTML += '<span style="color:rgba(0,255,65,0.2)">───────────────────────────</span>\n';
-    await sleep(charDelay * 4);
-    return;
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addLine(log, text, cls) {
+  const div = document.createElement('div');
+  div.className = 'line';
+  div.innerHTML = `<span class="prompt">&gt;</span><span class="${cls || ''}">${escHtml(text)}</span>`;
+  log.appendChild(div);
+  return div;
+}
+
+function addSubLine(log, html) {
+  const div = document.createElement('div');
+  div.className = 'prog-row';
+  div.innerHTML = html;
+  log.appendChild(div);
+  return div;
+}
+
+async function animateBar(container, ms) {
+  const BAR_CHAR = '█';
+  const WIDTH = 20;
+  const span = document.createElement('span');
+  span.className = 'prog-bar';
+  container.innerHTML = '[';
+  container.appendChild(span);
+  container.innerHTML += '] <span class="ok" style="opacity:0">OK</span>';
+  const okSpan = container.querySelector('.ok');
+
+  for (let i = 0; i <= WIDTH; i++) {
+    span.textContent = BAR_CHAR.repeat(i) + ' '.repeat(WIDTH - i);
+    await sleep(ms / WIDTH);
   }
-  const isHl = text === 'Welcome, Neo.' || text === 'Ready to invest in yourself?';
-  if (isHl) {
-    el.innerHTML += '<span class="hl">';
-    for (const ch of text) {
-      el.innerHTML = el.innerHTML.slice(0, -'</span>'.length) + escHtml(ch) + '</span>';
-      await sleep(charDelay);
-    }
-    el.innerHTML += '\n';
-  } else {
-    for (const ch of text) {
-      el.innerHTML += escHtml(ch);
-      await sleep(charDelay);
-    }
-    el.innerHTML += '\n';
+  okSpan.style.opacity = '1';
+  await sleep(120);
+}
+
+async function typeLine(el, text, charDelay) {
+  const span = el.querySelector('span:last-child');
+  span.textContent = '';
+  for (const ch of text) {
+    span.textContent += ch;
+    await sleep(charDelay);
   }
 }
 
 async function runBoot() {
   const log = document.getElementById('boot-log');
-  for (const line of BOOT_LINES) {
-    await typeText(log, line.text, line.delay);
-    await sleep(120);
-  }
-  await sleep(300);
+
+  // Line 1: ARCHITECT_OS v1.0
+  const l1 = addLine(log, '', 'hl');
+  await typeLine(l1, 'ARCHITECT_OS v1.0', 55);
+  await sleep(150);
+
+  // Line 2: LOADING CORE MODULES + bar
+  const l2 = addLine(log, '', '');
+  await typeLine(l2, 'LOADING CORE MODULES', 35);
+  const b2 = addSubLine(log, '');
+  await animateBar(b2, 600);
+  await sleep(100);
+
+  // Line 3: SCANNING USER PROFILE + bar
+  const l3 = addLine(log, '', '');
+  await typeLine(l3, 'SCANNING USER PROFILE', 35);
+  const b3 = addSubLine(log, '');
+  await animateBar(b3, 700);
+  await sleep(100);
+
+  // Line 4: ESTABLISHING CONNECTION + bar
+  const l4 = addLine(log, '', '');
+  await typeLine(l4, 'ESTABLISHING CONNECTION', 35);
+  const b4 = addSubLine(log, '');
+  await animateBar(b4, 800);
+  await sleep(150);
+
+  // Line 5: DECRYPTING IDENTITY...
+  const l5 = addLine(log, '', '');
+  await typeLine(l5, 'DECRYPTING IDENTITY...', 40);
+  await sleep(200);
+
+  // Sub: STATUS: AUTHORIZED
+  const auth = addSubLine(log, '<span class="hl">STATUS: AUTHORIZED</span>');
+  await sleep(400);
+
+  // Blank gap
+  log.appendChild(document.createElement('br'));
+
+  // Welcome lines
+  const lw1 = addLine(log, '', 'hl');
+  await typeLine(lw1, 'Welcome, Neo.', 55);
+  await sleep(120);
+
+  const lw2 = addLine(log, '', 'hl');
+  await typeLine(lw2, 'Ready to invest in yourself?', 45);
+  await sleep(400);
+
   document.getElementById('greeting-actions').classList.remove('hidden');
 }
 
@@ -268,10 +365,9 @@ async function runBoot() {
 //  GREETING ACTIONS
 // ════════════════════════════════════════════════
 document.getElementById('btn-red-pill').addEventListener('click', async function() {
-  this.style.background    = 'var(--red)';
-  this.style.borderColor   = 'var(--red)';
-  this.style.color         = '#fff';
-  await sleep(380);
+  this.style.background = '#ff3333';
+  this.style.color      = '#fff';
+  await sleep(320);
   launchApp();
 });
 
