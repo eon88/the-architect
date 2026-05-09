@@ -89,6 +89,7 @@
             letter-spacing: 0.15em;
             border-radius: 6px;
             cursor: pointer;
+            white-space: nowrap;
             transition: background 0.2s, color 0.2s;
         }
 
@@ -261,7 +262,7 @@
                 <input id="auth-password" type="password" placeholder="password" autocomplete="current-password"
                     style="width:100%; background:transparent; border:none; border-bottom:1px solid #00ff41; color:#00ff41;
                            font-family:'Courier New',monospace; font-size:0.95rem; padding:0.5rem 0; outline:none; margin-bottom:2rem;"/>
-                <div style="display:flex; gap:1.5rem; align-items:center;">
+                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
                     <button class="btn-yes" onclick="doLogin()">[ LOGIN ]</button>
                     <button class="btn-yes" onclick="doRegister()">[ CREATE ACCOUNT ]</button>
                     <button class="btn-later">later</button>
