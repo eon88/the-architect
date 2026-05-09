@@ -20,8 +20,8 @@
 
         .hidden { display: none !important; }
 
-        /* ── LOGIN SCREEN ─────────────────────────────── */
-        #screen-login {
+        /* ── WELCOME SCREEN ───────────────────────────── */
+        #screen-welcome {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -48,22 +48,16 @@
             gap: 7px;
         }
 
-        .terminal-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #333;
-        }
+        .terminal-dot { width: 10px; height: 10px; border-radius: 50%; background: #222; }
 
         .terminal-line {
             color: #00ff41;
             font-size: 0.95rem;
-            line-height: 1.9;
+            line-height: 2;
             min-height: 1.9em;
-            white-space: pre;
         }
 
-        .terminal-line.dim { color: #005a17; }
+        .terminal-line.dim { color: #004d14; }
 
         .cursor {
             display: inline-block;
@@ -76,23 +70,42 @@
 
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-        #login-btn {
+        .welcome-actions {
             margin-top: 2.5rem;
-            width: 100%;
-            padding: 0.85rem;
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.6s;
+        }
+
+        .btn-yes {
+            padding: 0.75rem 2rem;
             background: transparent;
             border: 1px solid #00ff41;
             color: #00ff41;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             letter-spacing: 0.15em;
             border-radius: 6px;
             cursor: pointer;
-            opacity: 0;
-            transition: background 0.2s, color 0.2s, opacity 0.6s;
+            transition: background 0.2s, color 0.2s;
         }
 
-        #login-btn:hover { background: #00ff41; color: #000; }
+        .btn-yes:hover { background: #00ff41; color: #000; }
+
+        .btn-later {
+            background: none;
+            border: none;
+            color: #333;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .btn-later:hover { color: #555; }
 
         /* ── RITUAL SCREEN ────────────────────────────── */
         #screen-ritual {
@@ -211,49 +224,38 @@
             border-radius: 8px;
             padding: 1.5rem;
             transition: border-color 0.3s, transform 0.2s;
-            cursor: default;
         }
 
         .pillar-card:hover { transform: translateY(-3px); border-color: #333; }
         .pillar-card.active { border-color: #00ff41; }
 
-        .pillar-name {
-            font-size: 0.85rem;
-            letter-spacing: 0.08em;
-            color: #ccc;
-            margin-bottom: 0.5rem;
-        }
+        .pillar-name { font-size: 0.85rem; letter-spacing: 0.08em; color: #ccc; margin-bottom: 0.5rem; }
 
-        .pillar-status {
-            font-size: 0.65rem;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-        }
-
+        .pillar-status { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; }
         .pillar-status.moving { color: #00ff41; }
         .pillar-status.paused { color: #333; }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
-    <div id="screen-login">
+    <!-- WELCOME SCREEN -->
+    <div id="screen-welcome">
         <div class="terminal-box">
             <div class="terminal-topbar">
                 <div class="terminal-dot"></div>
                 <div class="terminal-dot"></div>
                 <div class="terminal-dot"></div>
             </div>
-
             <div style="margin-top: 1rem;">
-                <div class="terminal-line dim">> ARCHITECT_OS v1.0 — initializing...</div>
-                <div class="terminal-line" id="tl-1"></div>
-                <div class="terminal-line" id="tl-2"></div>
-                <div class="terminal-line" id="tl-3"></div>
-                <div class="terminal-line" id="tl-cursor"><span class="cursor"></span></div>
+                <div class="terminal-line dim">> ARCHITECT_OS v1.0</div>
+                <div class="terminal-line" id="wl-1"></div>
+                <div class="terminal-line" id="wl-2"></div>
+                <div class="terminal-line" id="wl-cursor"><span class="cursor"></span></div>
             </div>
-
-            <button id="login-btn" onclick="login()">[ ENTER SYSTEM ]</button>
+            <div class="welcome-actions" id="welcome-actions">
+                <button class="btn-yes" onclick="enterApp()">[ YES ]</button>
+                <button class="btn-later">later</button>
+            </div>
         </div>
     </div>
 
@@ -264,14 +266,11 @@
             <p id="morning-message">Loading your story...</p>
             <button class="text-btn" onclick="showEvening()">[ evening journal ]</button>
         </div>
-
         <div id="evening-view" class="hidden">
             <span class="ritual-label">> evening_reflection.exe</span>
             <p id="seed-question">How was your day?</p>
             <textarea id="journal-input" placeholder="Write here..."></textarea>
-            <div>
-                <button class="submit-btn" onclick="submitJournal()">[ SUBMIT ]</button>
-            </div>
+            <div><button class="submit-btn" onclick="submitJournal()">[ SUBMIT ]</button></div>
         </div>
     </div>
 
@@ -285,19 +284,12 @@
     </div>
 
     <script>
-        // ── Terminal animation ──────────────────────────────────────────────
-        const lines = [
-            { id: 'tl-1', text: '> Good morning.' },
-            { id: 'tl-2', text: '> Ready to invest in yourself?' },
-            { id: 'tl-3', text: '> .' },
-        ];
-
+        // ── Typewriter ──────────────────────────────────────────────────────
         function typeText(elementId, text, speed, onDone) {
             const el = document.getElementById(elementId);
             let i = 0;
             const interval = setInterval(() => {
-                el.textContent += text[i];
-                i++;
+                el.textContent += text[i++];
                 if (i >= text.length) {
                     clearInterval(interval);
                     if (onDone) onDone();
@@ -305,20 +297,14 @@
             }, speed);
         }
 
-        function runTerminalSequence() {
-            const cursor = document.getElementById('tl-cursor');
-            typeText('tl-1', lines[0].text, 55, () => {
+        function runWelcomeSequence() {
+            typeText('wl-1', 'Welcome, Neo.', 70, () => {
                 setTimeout(() => {
-                    typeText('tl-2', lines[1].text, 55, () => {
-                        setTimeout(() => {
-                            typeText('tl-3', lines[2].text, 400, () => {
-                                cursor.innerHTML = '';
-                                const btn = document.getElementById('login-btn');
-                                btn.style.opacity = '1';
-                            });
-                        }, 300);
+                    typeText('wl-2', 'Ready to invest in yourself?', 55, () => {
+                        document.getElementById('wl-cursor').innerHTML = '';
+                        document.getElementById('welcome-actions').style.opacity = '1';
                     });
-                }, 400);
+                }, 500);
             });
         }
 
@@ -326,22 +312,20 @@
         let userId = localStorage.getItem('architect_user_id');
 
         document.addEventListener('DOMContentLoaded', () => {
-            if (userId) {
-                showRitual();
-            } else {
-                runTerminalSequence();
-            }
+            runWelcomeSequence();
         });
 
-        async function login() {
-            const res = await fetch('/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'test@example.com', name: 'User' })
-            });
-            const data = await res.json();
-            userId = data.user_id;
-            localStorage.setItem('architect_user_id', userId);
+        async function enterApp() {
+            if (!userId) {
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'test@example.com', name: 'User' })
+                });
+                const data = await res.json();
+                userId = data.user_id;
+                localStorage.setItem('architect_user_id', userId);
+            }
             showRitual();
         }
 
@@ -401,8 +385,8 @@
             const grid = document.getElementById('pillars-grid');
             grid.innerHTML = '';
             pillars.forEach(p => {
-                const card = document.createElement('div');
                 const isMoving = p.status === 'Moving';
+                const card = document.createElement('div');
                 card.className = `pillar-card ${isMoving ? 'active' : ''}`;
                 card.innerHTML = `
                     <div class="pillar-name">${p.name}</div>
@@ -413,7 +397,7 @@
         }
 
         function hideAll() {
-            ['screen-login','screen-ritual','screen-map','morning-view','evening-view']
+            ['screen-welcome','screen-ritual','screen-map','morning-view','evening-view']
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
