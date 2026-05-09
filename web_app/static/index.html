@@ -101,7 +101,6 @@
         }
         .btn:hover { opacity: .85; }
         .btn-primary { background: #fff; color: #000; }
-        .btn-secondary { background: transparent; color: #e5e5e5; border: 1px solid #333; }
         .btn:disabled { opacity: .4; cursor: not-allowed; }
 
         .link-later {
@@ -199,19 +198,13 @@
 
     <div id="auth-error" class="error-msg hidden"></div>
 
-    <!-- shared fields -->
+    <input id="field-name" class="field" type="text" placeholder="your name" autocomplete="name" />
     <input id="field-email" class="field" type="email" placeholder="email" autocomplete="email" />
     <input id="field-password" class="field" type="password" placeholder="password" autocomplete="current-password" />
 
-    <!-- register-only name field -->
-    <input id="field-name" class="field hidden" type="text" placeholder="your name" autocomplete="name" />
-
-    <button id="btn-login" class="btn btn-primary" onclick="doLogin()">[ LOGIN ]</button>
-    <button id="btn-register" class="btn btn-secondary" onclick="switchToRegister()">[ CREATE ACCOUNT ]</button>
+    <button id="btn-register" class="btn btn-primary" onclick="doRegister()">[ CREATE ACCOUNT ]</button>
     <span class="link-later" onclick="skipAuth()">later</span>
 </div>
-
-<!-- register mode replaces the buttons; same fields, different action -->
 
 <!-- ══ RITUAL SCREEN ══ -->
 <div id="screen-ritual" class="screen hidden">
@@ -251,7 +244,6 @@
 <script>
     let userId = null;
     let userName = "Neo";
-    let registerMode = false;
 
     const SEED_QUESTIONS = [
         "Who in your life actually pushes you to be better, and who is just taking up space?",
@@ -273,53 +265,6 @@
         document.getElementById('auth-error').classList.add('hidden');
     }
 
-    function switchToRegister() {
-        registerMode = true;
-        document.getElementById('field-name').classList.remove('hidden');
-        document.getElementById('field-password').setAttribute('autocomplete', 'new-password');
-        document.getElementById('btn-login').textContent = '[ CREATE ACCOUNT ]';
-        document.getElementById('btn-login').onclick = doRegister;
-        document.getElementById('btn-register').textContent = '← back to login';
-        document.getElementById('btn-register').onclick = switchToLogin;
-        document.getElementById('welcome-name').textContent = 'Create your account.';
-        clearError();
-    }
-
-    function switchToLogin() {
-        registerMode = false;
-        document.getElementById('field-name').classList.add('hidden');
-        document.getElementById('field-password').setAttribute('autocomplete', 'current-password');
-        document.getElementById('btn-login').textContent = '[ LOGIN ]';
-        document.getElementById('btn-login').onclick = doLogin;
-        document.getElementById('btn-register').textContent = '[ CREATE ACCOUNT ]';
-        document.getElementById('btn-register').onclick = switchToRegister;
-        document.getElementById('welcome-name').textContent = 'Welcome, Neo.';
-        clearError();
-    }
-
-    async function doLogin() {
-        const email = document.getElementById('field-email').value.trim();
-        const password = document.getElementById('field-password').value;
-        if (!email || !password) { showError('Email and password are required.'); return; }
-        clearError();
-        setBusy(true);
-        const res = await fetch('/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        setBusy(false);
-        if (!res.ok) {
-            const d = await res.json();
-            showError(d.detail || 'Wrong email or password.');
-            return;
-        }
-        const data = await res.json();
-        userId = data.user_id;
-        userName = data.name || email.split('@')[0];
-        showRitual();
-    }
-
     async function doRegister() {
         const email = document.getElementById('field-email').value.trim();
         const password = document.getElementById('field-password').value;
@@ -328,14 +273,21 @@
         if (password.length < 6) { showError('Password must be at least 6 characters.'); return; }
         clearError();
         setBusy(true);
-        const res = await fetch('/auth/register', {
+        let res = await fetch('/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, name })
         });
+        // existing account — try logging in with the same credentials
+        if (res.status === 409) {
+            res = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+        }
         setBusy(false);
-        if (res.status === 409) { showError('Account already exists.'); switchToLogin(); return; }
-        if (!res.ok) { const d = await res.json(); showError(d.detail || 'Registration failed.'); return; }
+        if (!res.ok) { const d = await res.json(); showError(d.detail || 'Wrong email or password.'); return; }
         const data = await res.json();
         userId = data.user_id;
         userName = data.name || email.split('@')[0];
@@ -349,7 +301,6 @@
     }
 
     function setBusy(busy) {
-        document.getElementById('btn-login').disabled = busy;
         document.getElementById('btn-register').disabled = busy;
     }
 
