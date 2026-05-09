@@ -56,23 +56,21 @@ async def get_morning_ritual(user_id: int, db: Session = Depends(get_db)):
 
 @app.post("/ritual/evening")
 async def submit_evening_journal(data: dict, db: Session = Depends(get_db)):
-    user_id = data.get("user_id")
+    user_id = int(data.get("user_id"))
     content = data.get("content")
-    
-    # Save the journal entry
+
     entry = JournalEntry(user_id=user_id, content=content)
     db.add(entry)
-    
-    # Process with pipeline to update pillar status
+    db.commit()
+
     result = pipeline.process_journal(content)
-    
-    # Update pillar state
+
     pillar = db.query(PillarState).filter(PillarState.user_id == user_id, PillarState.pillar_name == result["pillar"]).first()
     if pillar:
         pillar.status = result["momentum"]
         pillar.last_updated = datetime.datetime.utcnow()
         db.commit()
-    
+
     return {"status": "success", "pillar_updated": result["pillar"], "momentum": result["momentum"]}
 
 @app.get("/user/pillars/{user_id}")
