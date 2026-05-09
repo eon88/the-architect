@@ -121,7 +121,7 @@
         .btn:hover { background: #ff2020; box-shadow: 0 0 24px rgba(255,32,32,.5); }
 
         .pill-later {
-            display: block;
+            display: inline-block;
             margin-top: 14px;
             font-size: .72rem;
             letter-spacing: .1em;
@@ -131,10 +131,15 @@
             border: none;
             font-family: inherit;
             opacity: 0;
-            transition: opacity .5s, color .25s, text-shadow .25s;
+            padding: 6px 20px;
+            border-radius: 999px;
+            transition: opacity .5s, background .25s, box-shadow .25s;
         }
         .pill-later.visible { opacity: 1; }
-        .pill-later:hover { color: #4488ff; text-shadow: 0 0 12px rgba(68,136,255,.6); }
+        .pill-later:hover {
+            background: #1a4aff;
+            box-shadow: 0 0 18px rgba(26,74,255,.55);
+        }
 
         /* ── inner screens ── */
         .screen { width: 100%; max-width: 680px; }
