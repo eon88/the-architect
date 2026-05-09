@@ -114,11 +114,27 @@
             cursor: pointer;
             opacity: 0;
             transform: translateY(6px);
-            transition: opacity .5s, transform .5s, background .2s;
+            transition: opacity .5s, transform .5s, background .25s, box-shadow .25s;
             text-shadow: none;
         }
         .btn.visible { opacity: 1; transform: translateY(0); }
-        .btn:hover { background: #fff; }
+        .btn:hover { background: #ff2020; box-shadow: 0 0 24px rgba(255,32,32,.5); }
+
+        .pill-later {
+            display: block;
+            margin-top: 14px;
+            font-size: .72rem;
+            letter-spacing: .1em;
+            color: #444;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            opacity: 0;
+            transition: opacity .5s, color .25s, text-shadow .25s;
+        }
+        .pill-later.visible { opacity: 1; }
+        .pill-later:hover { color: #4488ff; text-shadow: 0 0 12px rgba(68,136,255,.6); }
 
         /* ── inner screens ── */
         .screen { width: 100%; max-width: 680px; }
@@ -220,6 +236,7 @@
         </div>
 
         <button class="btn" id="begin-btn" onclick="enterApp()">[ BEGIN JOURNEY ]</button>
+        <button class="pill-later" id="later-btn" onclick="takeBluePill()">later</button>
     </div>
 </div>
 
@@ -324,6 +341,14 @@
         document.getElementById('welcome-block').classList.add('visible');
         await sleep(500);
         document.getElementById('begin-btn').classList.add('visible');
+        document.getElementById('later-btn').classList.add('visible');
+    }
+
+    function takeBluePill() {
+        window.close();
+        // fallback if browser blocks window.close()
+        document.body.innerHTML = '';
+        document.body.style.background = '#000';
     }
 
     runBoot();
