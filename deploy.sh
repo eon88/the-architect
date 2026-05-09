@@ -11,6 +11,8 @@ echo "==> Copying files..."
 cp -r "$REPO"/web_app/* "$DEPLOY"/web_app/
 cp "$REPO"/requirements.txt "$DEPLOY"/
 cp "$REPO"/docker-compose.yml "$DEPLOY"/
+mkdir -p "$DEPLOY"/nginx
+cp "$REPO"/nginx/nginx.conf "$DEPLOY"/nginx/nginx.conf
 
 echo "==> Building and restarting..."
 cd "$DEPLOY"
