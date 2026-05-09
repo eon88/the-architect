@@ -26,20 +26,41 @@ async def read_index():
 
 # --- API Endpoints ---
 
+@app.post("/auth/register")
+async def register(data: dict, db: Session = Depends(get_db)):
+    email = data.get("email", "").strip()
+    name = data.get("name", "Architect").strip()
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="An account with this email already exists")
+
+    user = User(email=email, full_name=name)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    pillars = ["Social", "Financial", "Spiritual", "Craft/Career", "Emotional/Intimacy", "Intellectual", "Legacy"]
+    for p in pillars:
+        db.add(PillarState(user_id=user.id, pillar_name=p, status="Paused"))
+    db.commit()
+
+    return {"user_id": user.id, "email": user.email}
+
 @app.post("/auth/login")
 async def login(data: dict, db: Session = Depends(get_db)):
-    email = data.get("email")
+    email = data.get("email", "").strip()
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        user = User(email=email, full_name=data.get("name", "Architect"))
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        # Initialize pillars for new user
-        pillars = ["Social", "Financial", "Spiritual", "Craft/Career", "Emotional/Intimacy", "Intellectual", "Legacy"]
-        for p in pillars:
-            db.add(PillarState(user_id=user.id, pillar_name=p, status="Paused"))
-        db.commit()
+        raise HTTPException(status_code=404, detail="No account found with this email")
+
     return {"user_id": user.id, "email": user.email}
 
 @app.get("/ritual/morning/{user_id}")
