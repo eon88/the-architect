@@ -20,6 +20,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-architect_user}:${POSTGRES_PASSWORD:-architect_password}@db:5432/${POSTGRES_DB:-architect_db}
       - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - ./web_app/static:/app/static
     depends_on:
       db:
         condition: service_healthy
