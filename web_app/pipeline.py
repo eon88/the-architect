@@ -6,7 +6,7 @@ from prompts import PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT, AUDI
 
 client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
-MODEL = "gemini-1.5-flash"
+MODEL = "gemini-2.0-flash"
 
 
 def call_llm(system_prompt: str, user_input: str) -> str:
