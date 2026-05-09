@@ -18,7 +18,7 @@
             align-items: center;
             justify-content: center;
             padding: 24px;
-            overflow: hidden;
+            overflow-y: auto;
         }
 
         /* scanlines */
@@ -102,7 +102,7 @@
 
         /* ── button ── */
         .btn {
-            display: inline-block;
+            display: block;
             padding: 13px 28px;
             font-family: inherit;
             font-size: .82rem;
@@ -121,7 +121,7 @@
         .btn:hover { background: #ff2020; box-shadow: 0 0 24px rgba(255,32,32,.5); }
 
         .pill-later {
-            display: inline-block;
+            display: block;
             margin-top: 14px;
             font-size: .72rem;
             letter-spacing: .1em;
@@ -334,7 +334,6 @@
         cursorEl.innerHTML = '<span class="cursor"></span>';
         log.appendChild(cursorEl);
 
-        let cumDelay = 200;
         for (const line of BOOT_LINES) {
             await sleep(line.delay || 0);
             const el = document.createElement('div');
@@ -369,18 +368,23 @@
         document.getElementById('screen-map').classList.add('hidden');
     }
 
+    function pickMorningMessage() {
+        const msg = MORNING_MESSAGES[Math.floor(Math.random() * MORNING_MESSAGES.length)];
+        document.getElementById('morning-message').textContent = `"${msg}"`;
+    }
+
     function enterApp() {
         hideAll();
         document.getElementById('screen-ritual').classList.remove('hidden');
         showMorning();
-        const msg = MORNING_MESSAGES[Math.floor(Math.random() * MORNING_MESSAGES.length)];
-        document.getElementById('morning-message').textContent = `"${msg}"`;
+        pickMorningMessage();
     }
 
     function showRitual() {
         hideAll();
         document.getElementById('screen-ritual').classList.remove('hidden');
         showMorning();
+        pickMorningMessage();
     }
 
     function showMorning() {
@@ -396,6 +400,8 @@
     }
 
     function submitJournal() {
+        const content = document.getElementById('journal-input').value.trim();
+        if (!content) return;
         document.getElementById('journal-input').value = '';
         showRitual();
     }
