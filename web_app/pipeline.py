@@ -1,34 +1,47 @@
 import json
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from prompts import PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT, AUDITOR_PROMPT
 
-genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 MODEL = "gemini-1.5-flash"
 
 
 def call_llm(system_prompt: str, user_input: str) -> str:
-    model = genai.GenerativeModel(
-        model_name=MODEL,
-        system_instruction=system_prompt
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=user_input,
+        config=types.GenerateContentConfig(
+            system_instruction=system_prompt,
+        )
     )
-    response = model.generate_content(user_input)
     return response.text
+
+
+def parse_json(text: str) -> dict:
+    # Gemini sometimes wraps JSON in markdown code fences
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+    return json.loads(text.strip())
 
 
 class ArchitectPipeline:
     def process_journal(self, journal_text: str) -> dict:
         # 1. Profiler — extract pillar, state, core issue
         profile_json = call_llm(PROFILER_PROMPT, journal_text)
-        profile = json.loads(profile_json.strip().strip("```json").strip("```").strip())
+        profile = parse_json(profile_json)
 
         # 2. Strategist — decide priority and momentum
-        strategy_json = call_llm(STRATEGIST_PROMPT, profile_json)
-        strategy = json.loads(strategy_json.strip().strip("```json").strip("```").strip())
+        strategy_json = call_llm(STRATEGIST_PROMPT, json.dumps(profile))
+        strategy = parse_json(strategy_json)
 
         # 3. Storyteller — craft the morning hero story
-        story = call_llm(STORYTELLER_PROMPT, strategy_json)
+        story = call_llm(STORYTELLER_PROMPT, json.dumps(strategy))
 
         # 4. Auditor — enforce Sharp Older Brother tone
         final_message = call_llm(AUDITOR_PROMPT, story)
