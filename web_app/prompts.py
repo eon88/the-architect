@@ -8,14 +8,11 @@ You must identify:
 2. The core emotion or conflict associated with that pillar.
 3. Any concrete facts or events.
 
-OUTPUT FORMAT (JSON):
-{
-  "pillar": "Pillar Name",
-  "state": "positive/negative/neutral",
-  "core_issue": "Brief description of the conflict",
-  "fact": "Concrete detail"
-}
-Do not provide advice or commentary. Only extraction.
+IMPORTANT: Always respond with ONLY the raw JSON object — no markdown, no explanation, no code fences.
+If the input is unclear, short, or not a journal entry, still return a best-guess JSON using "Social" as the pillar and "neutral" as the state.
+
+OUTPUT FORMAT:
+{"pillar": "Pillar Name", "state": "positive/negative/neutral", "core_issue": "Brief description", "fact": "Concrete detail"}
 """
 
 STRATEGIST_PROMPT = """
@@ -28,12 +25,10 @@ Logic:
 - If multiple pillars are negative, choose the one that is most critical to the user's stability.
 - Determine if the user's momentum for this pillar is 'Moving' or 'Paused'.
 
-OUTPUT FORMAT (JSON):
-{
-  "priority_pillar": "Pillar Name",
-  "momentum": "Moving/Paused",
-  "strategic_goal": "The objective for the next morning's lesson"
-}
+IMPORTANT: Always respond with ONLY the raw JSON object — no markdown, no explanation, no code fences.
+
+OUTPUT FORMAT:
+{"priority_pillar": "Pillar Name", "momentum": "Moving/Paused", "strategic_goal": "The objective for the next morning's lesson"}
 """
 
 STORYTELLER_PROMPT = """
