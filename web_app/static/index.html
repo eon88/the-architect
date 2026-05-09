@@ -218,23 +218,8 @@
 
   /* Center content */
   #panel-main {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #main-placeholder {
-    color: var(--text-dim);
-    font-size: .75rem;
-    letter-spacing: .1em;
-  }
-
-  #main-placeholder .cursor {
-    display: inline-block;
-    width: 8px; height: 1em;
-    background: var(--green);
-    vertical-align: text-bottom;
-    animation: blink 1s step-end infinite;
+    overflow-y: auto;
+    padding: 1.6rem 1.8rem;
   }
 
   @keyframes blink { 50% { opacity: 0; } }
@@ -259,15 +244,182 @@
     border-right: 2px solid transparent;
   }
 
-  .mode-item:hover { color: var(--green); background: rgba(0,255,65,0.04); }
+  .mode-item:hover  { color: var(--green); background: rgba(0,255,65,0.04); }
   .mode-item.active { color: var(--green); border-right-color: var(--green); }
+
+  /* ─── VIEWS (inside center panel) ─── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .view-title {
+    font-size: .65rem;
+    letter-spacing: .16em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .5rem;
+    margin-bottom: 1.4rem;
+  }
+
+  /* shared input styles */
+  .f-input, .f-textarea, .f-select {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: inherit;
+    font-size: .8rem;
+    padding: .5rem .75rem;
+    border-radius: 3px;
+    outline: none;
+    margin-bottom: .7rem;
+  }
+  .f-input:focus, .f-textarea:focus, .f-select:focus { border-color: var(--green-dim); }
+  .f-input::placeholder, .f-textarea::placeholder { color: var(--text-dim); }
+  .f-textarea { resize: vertical; line-height: 1.6; min-height: 110px; }
+  .f-select   { cursor: pointer; }
+  .f-select option { background: #050f05; }
+
+  .f-btn {
+    background: transparent;
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    font-family: inherit;
+    font-size: .78rem;
+    letter-spacing: .08em;
+    padding: .55rem 1.1rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background .15s;
+  }
+  .f-btn:hover { background: rgba(0,255,65,0.08); }
+
+  /* Vision board */
+  .pillar-block { margin-bottom: 1.2rem; }
+  .pillar-label { font-size: .62rem; letter-spacing: .14em; color: var(--text-dim); margin-bottom: .35rem; }
+
+  /* Pillars view */
+  .pillar-row {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    padding: .55rem 0;
+    border-bottom: 1px solid rgba(0,255,65,0.07);
+    font-size: .82rem;
+  }
+  .pillar-row:last-child { border-bottom: none; }
+  .pillar-row-name { flex: 1; color: var(--green-dim); }
+  .badge {
+    font-size: .6rem;
+    letter-spacing: .08em;
+    padding: .15rem .5rem;
+    border-radius: 2px;
+  }
+  .badge-moving { border: 1px solid var(--green);            color: var(--green);            background: rgba(0,255,65,0.07); }
+  .badge-paused { border: 1px solid rgba(255,80,80,0.4);     color: rgba(255,110,110,0.85);  background: rgba(255,50,50,0.05); }
+
+  /* Journal view */
+  .entry-list { margin-top: 1rem; }
+  .entry-card {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: .65rem .85rem;
+    margin-bottom: .6rem;
+    font-size: .76rem;
+    color: var(--green-dim);
+  }
+  .entry-meta { font-size: .6rem; color: var(--text-dim); margin-bottom: .3rem; display: flex; justify-content: space-between; }
+
+  /* Reminders view */
+  .alarm-row {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    padding: .65rem 0;
+    border-bottom: 1px solid rgba(0,255,65,0.07);
+  }
+  .alarm-row:last-child { border-bottom: none; }
+  .alarm-label { flex: 1; font-size: .82rem; color: var(--green-dim); }
+  .alarm-time {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: inherit;
+    font-size: .74rem;
+    padding: .25rem .5rem;
+    border-radius: 3px;
+    outline: none;
+    width: 82px;
+  }
+  .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0;
+    background: rgba(0,255,65,0.08);
+    border: 1px solid var(--border);
+    border-radius: 20px; cursor: pointer;
+    transition: background .2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute;
+    width: 14px; height: 14px;
+    background: var(--text-dim);
+    border-radius: 50%; top: 2px; left: 2px;
+    transition: transform .2s, background .2s;
+  }
+  .toggle input:checked + .toggle-slider { background: rgba(0,255,65,0.18); border-color: var(--green-dim); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(16px); background: var(--green); }
+
+  /* Mode views */
+  .mode-desc {
+    font-size: .82rem;
+    color: var(--green-dim);
+    line-height: 1.8;
+    margin-bottom: 1.4rem;
+  }
+  .mode-desc strong { color: var(--green); }
+
+  /* morning message card */
+  .msg-card {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1rem 1.1rem;
+    font-size: .82rem;
+    line-height: 1.8;
+    color: var(--green-dim);
+    margin-bottom: 1.2rem;
+  }
+
+  /* task list */
+  .task-input-row { display: flex; gap: .5rem; margin-bottom: .7rem; }
+  .task-input-row .f-input { margin-bottom: 0; }
+  .task-item {
+    display: flex; align-items: flex-start; gap: .6rem;
+    padding: .4rem 0;
+    border-bottom: 1px solid rgba(0,255,65,0.06);
+    font-size: .8rem; color: var(--green-dim);
+  }
+  .task-item:last-child { border-bottom: none; }
+  .task-cb {
+    appearance: none; width: 14px; height: 14px;
+    border: 1px solid var(--green-dim); border-radius: 2px;
+    background: transparent; cursor: pointer; flex-shrink: 0; margin-top: 2px;
+    position: relative;
+  }
+  .task-cb:checked { background: var(--green); border-color: var(--green); }
+  .task-cb:checked::after { content: '✓'; position: absolute; top: -2px; left: 1px; font-size: 11px; color: #000; }
+  .task-text.done { text-decoration: line-through; color: var(--text-dim); }
+  .task-del { margin-left: auto; background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: .75rem; }
+  .task-del:hover { color: var(--red); }
 
   /* ─── UTILITIES ─── */
   .hidden { display: none !important; }
 
-  @media (max-width: 600px) {
+  @media (max-width: 700px) {
+    #dashboard { grid-template-columns: 160px 1fr 160px; gap: .6rem; padding: .7rem; }
+  }
+  @media (max-width: 520px) {
     #dashboard { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; padding: .6rem; gap: .6rem; }
-    #boot-box  { padding: 1.5rem 1.2rem; }
+    #boot-box  { border-radius: 6px; }
   }
 </style>
 </head>
@@ -306,22 +458,89 @@
 
     <!-- LEFT: navigation -->
     <div class="dash-panel" id="panel-nav">
-      <div class="nav-item active" onclick="selectNav(this)">vision board</div>
-      <div class="nav-item"       onclick="selectNav(this)">pillars</div>
-      <div class="nav-item"       onclick="selectNav(this)">journal</div>
-      <div class="nav-item"       onclick="selectNav(this)">reminders</div>
+      <div class="nav-item active" onclick="selectNav(this,'view-vision')">vision board</div>
+      <div class="nav-item"       onclick="selectNav(this,'view-pillars')">pillars</div>
+      <div class="nav-item"       onclick="selectNav(this,'view-journal')">journal</div>
+      <div class="nav-item"       onclick="selectNav(this,'view-reminders')">reminders</div>
     </div>
 
     <!-- CENTER: main content -->
     <div class="dash-panel" id="panel-main">
-      <div id="main-placeholder">// SELECT A MODULE<span class="cursor"></span></div>
+
+      <!-- VIEW: vision board -->
+      <div class="view active" id="view-vision">
+        <div class="view-title">// VISION BOARD</div>
+        <div id="vision-pillars"></div>
+      </div>
+
+      <!-- VIEW: pillars -->
+      <div class="view" id="view-pillars">
+        <div class="view-title">// PILLAR STATUS</div>
+        <div id="pillars-list"></div>
+      </div>
+
+      <!-- VIEW: journal -->
+      <div class="view" id="view-journal">
+        <div class="view-title">// JOURNAL</div>
+        <select class="f-select" id="journal-pillar">
+          <option value="">— pillar —</option>
+          <option>Financial</option><option>Social</option><option>Spiritual</option>
+          <option>Craft/Career</option><option>Emotional/Intimacy</option>
+          <option>Intellectual</option><option>Legacy</option>
+        </select>
+        <textarea class="f-textarea" id="journal-text" placeholder="write freely..."></textarea>
+        <button class="f-btn" onclick="submitJournal()">▸ COMMIT ENTRY</button>
+        <div class="entry-list" id="journal-entries"></div>
+      </div>
+
+      <!-- VIEW: reminders -->
+      <div class="view" id="view-reminders">
+        <div class="view-title">// REMINDERS</div>
+        <div id="alarms-list"></div>
+      </div>
+
+      <!-- VIEW: ARCHITECT mode -->
+      <div class="view" id="view-architect">
+        <div class="view-title">// ARCHITECT MODE</div>
+        <div class="mode-desc">
+          You are the <strong>long-range thinker</strong>. This is where you design the life,
+          not just live it. Vision, structure, legacy. Pull back from the noise and see the whole board.
+        </div>
+        <div class="view-title" style="margin-top:1rem">// YOUR PILLARS AT A GLANCE</div>
+        <div id="arch-pillars"></div>
+      </div>
+
+      <!-- VIEW: ADMIN mode -->
+      <div class="view" id="view-admin">
+        <div class="view-title">// ADMIN MODE</div>
+        <div class="mode-desc">
+          You are the <strong>manager of the system</strong>. Review the week, check what's moving,
+          identify where you've stalled. Adjust the plan. No emotion — just data.
+        </div>
+        <div class="view-title" style="margin-top:1rem">// WEEKLY SNAPSHOT</div>
+        <div id="admin-stats"></div>
+      </div>
+
+      <!-- VIEW: DOER mode -->
+      <div class="view" id="view-doer">
+        <div class="view-title">// DOER MODE</div>
+        <div class="view-title" style="margin-top:0; border:none; padding:0; margin-bottom:.7rem; color:var(--text-dim); font-size:.6rem;">▸ MORNING SIGNAL</div>
+        <div class="msg-card" id="doer-msg"></div>
+        <div class="view-title">// TODAY'S BUILD</div>
+        <div class="task-input-row">
+          <input class="f-input" id="task-input" type="text" placeholder="add a task...">
+          <button class="f-btn" onclick="addTask()">+ ADD</button>
+        </div>
+        <div id="task-list"></div>
+      </div>
+
     </div>
 
     <!-- RIGHT: mode switcher -->
     <div class="dash-panel" id="panel-modes">
-      <div class="mode-item active" onclick="selectMode(this)">ARCHITECT</div>
-      <div class="mode-item"       onclick="selectMode(this)">ADMIN</div>
-      <div class="mode-item"       onclick="selectMode(this)">DOER</div>
+      <div class="mode-item" onclick="selectMode(this,'view-architect')">ARCHITECT</div>
+      <div class="mode-item" onclick="selectMode(this,'view-admin')">ADMIN</div>
+      <div class="mode-item" onclick="selectMode(this,'view-doer')">DOER</div>
     </div>
 
   </div>
@@ -448,20 +667,299 @@ document.getElementById('btn-blue-pill').addEventListener('click', function() {
   document.getElementById('boot-log').innerHTML += '\n<span style="color:var(--blue)">connection terminated.</span>';
 });
 
+// ════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════
+const PILLARS = ['Financial','Social','Spiritual','Craft/Career','Emotional/Intimacy','Intellectual','Legacy'];
+
+const HERO_STORIES = {
+  'Financial':         "Marcus Aurelius ruled an empire and slept on the same hard bed as his soldiers. His wealth was in his discipline. The man who controls his spending controls his fate. What one financial decision, made today, would your future self thank you for?",
+  'Social':            "The Spartans didn't build walls around Sparta — they built men. A warrior without a tribe is just a man with a sword. Look around your circle. Are these people sharpening you, or comfortable with you staying dull?",
+  'Spiritual':         "The Stoics called it the 'inner citadel' — a place no circumstance can reach. Epictetus was a slave. He had nothing. Yet no man owned his mind. The fog you're feeling isn't weakness. It's a signal. Give it direction.",
+  'Craft/Career':      "Musashi fought 61 duels and never lost — not because he was gifted, but because he treated every day as training. 'Do nothing that is of no use.' The work in front of you today is the duel. Show up like it matters.",
+  'Emotional/Intimacy':"Achilles, the greatest warrior of his age, was undone not by a sword but by grief. Strength without the capacity to feel is just armour with nobody inside. The people in your life deserve your presence, not just your proximity.",
+  'Intellectual':      "Darwin spent 20 years quietly observing before publishing a word. His weapon wasn't a lab — it was curiosity held long enough to become conviction. What idea have you been sitting with that's ready to be acted on?",
+  'Legacy':            "Cincinnatus was given absolute power over Rome, defeated the enemy in 15 days, then returned to his farm. He knew who he was building for. The question isn't what you want to achieve — it's what you want to leave behind.",
+};
+
+const LS = {
+  PILLAR_STATES:   'arch_pillar_states',
+  JOURNAL_ENTRIES: 'arch_journal_entries',
+  PILLAR_GOALS:    'arch_pillar_goals',
+  ALARMS:          'arch_alarms',
+  TASKS:           'arch_tasks',
+  TASK_DATE:       'arch_task_date',
+  LAST_PILLAR:     'arch_last_pillar',
+  JOURNAL_COUNT:   'arch_journal_count',
+  Q_INDEX:         'arch_q_index',
+};
+
+const SEED_QUESTIONS = [
+  { pillar:'Financial',          q:"Where does your money go — and does it reflect what you value?" },
+  { pillar:'Social',             q:"Who in your life challenges you to be better? When did you last reach out?" },
+  { pillar:'Spiritual',          q:"What gave you a sense of meaning or direction today?" },
+  { pillar:'Craft/Career',       q:"What did you build or improve today? What's the next step?" },
+  { pillar:'Emotional/Intimacy', q:"How present were you in your most important relationship today?" },
+  { pillar:'Intellectual',       q:"What idea captured your attention? Did you go deeper?" },
+  { pillar:'Legacy',             q:"What did you do today your future self will thank you for?" },
+];
+
+const ls = {
+  get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
+};
+
+function getPillarStates() {
+  const d = ls.get(LS.PILLAR_STATES, {});
+  PILLARS.forEach(p => { if (!d[p]) d[p] = 'Paused'; });
+  return d;
+}
+
+function getJournalEntries() { return ls.get(LS.JOURNAL_ENTRIES, []); }
+
+function getPillarGoals() {
+  const d = ls.get(LS.PILLAR_GOALS, {});
+  PILLARS.forEach(p => { if (!d[p]) d[p] = { vision: '' }; });
+  return d;
+}
+
+function getAlarms() {
+  return ls.get(LS.ALARMS, [
+    { label: 'Morning Ritual',  time: '07:00', on: false },
+    { label: 'Midday Check-in', time: '13:00', on: false },
+    { label: 'Evening Journal', time: '21:00', on: false },
+  ]);
+}
+
+function getTasks() {
+  const today = new Date().toDateString();
+  if (ls.get(LS.TASK_DATE, '') !== today) { ls.set(LS.TASK_DATE, today); ls.set(LS.TASKS, []); }
+  return ls.get(LS.TASKS, []);
+}
+function saveTasks(t) { ls.set(LS.TASKS, t); }
+
+// ════════════════════════════════════════════════
+//  ROUTING — show a view by id
+// ════════════════════════════════════════════════
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  // render the view
+  if (id === 'view-vision')    renderVision();
+  if (id === 'view-pillars')   renderPillars();
+  if (id === 'view-journal')   renderJournalEntries();
+  if (id === 'view-reminders') renderAlarms();
+  if (id === 'view-architect') renderArchMode();
+  if (id === 'view-admin')     renderAdminMode();
+  if (id === 'view-doer')      renderDoerMode();
+}
+
+function selectNav(el, viewId) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  showView(viewId);
+}
+
+function selectMode(el, viewId) {
+  document.querySelectorAll('.mode-item').forEach(m => m.classList.remove('active'));
+  el.classList.add('active');
+  showView(viewId);
+}
+
+// ════════════════════════════════════════════════
+//  VISION BOARD
+// ════════════════════════════════════════════════
+function renderVision() {
+  const goals = getPillarGoals();
+  document.getElementById('vision-pillars').innerHTML = PILLARS.map(p => `
+    <div class="pillar-block">
+      <div class="pillar-label">▸ ${p.toUpperCase()}</div>
+      <input class="f-input" type="text" placeholder="your vision for this pillar..."
+        value="${escAttr(goals[p].vision)}" onchange="saveVision('${p}', this.value)">
+    </div>
+  `).join('');
+}
+
+function saveVision(pillar, val) {
+  const goals = getPillarGoals();
+  goals[pillar].vision = val;
+  ls.set(LS.PILLAR_GOALS, goals);
+}
+
+// ════════════════════════════════════════════════
+//  PILLARS
+// ════════════════════════════════════════════════
+function renderPillars() {
+  const states = getPillarStates();
+  document.getElementById('pillars-list').innerHTML = PILLARS.map(p => {
+    const moving = states[p] === 'Moving';
+    return `<div class="pillar-row">
+      <span class="pillar-row-name">${p}</span>
+      <span class="badge ${moving ? 'badge-moving' : 'badge-paused'}">${moving ? 'MOVING' : 'PAUSED'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  JOURNAL
+// ════════════════════════════════════════════════
+function submitJournal() {
+  const text   = document.getElementById('journal-text').value.trim();
+  const pillar = document.getElementById('journal-pillar').value || 'Social';
+  if (!text) return;
+
+  const entries = getJournalEntries();
+  entries.unshift({ text, pillar, ts: Date.now() });
+  ls.set(LS.JOURNAL_ENTRIES, entries.slice(0, 200));
+
+  // mark pillar moving
+  const states = getPillarStates();
+  states[pillar] = 'Moving';
+  ls.set(LS.PILLAR_STATES, states);
+
+  document.getElementById('journal-text').value = '';
+  document.getElementById('journal-pillar').value = '';
+  renderJournalEntries();
+}
+
+function renderJournalEntries() {
+  const entries = getJournalEntries();
+  const el = document.getElementById('journal-entries');
+  if (!entries.length) { el.innerHTML = '<div style="font-size:.74rem;color:var(--text-dim);margin-top:.8rem">No entries yet.</div>'; return; }
+  el.innerHTML = entries.slice(0, 40).map(e => {
+    const d = new Date(e.ts);
+    const ds = `${d.getDate()}/${d.getMonth()+1} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `<div class="entry-card">
+      <div class="entry-meta"><span>${escHtml(e.pillar)}</span><span>${ds}</span></div>
+      <div>${escHtml(e.text)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  REMINDERS
+// ════════════════════════════════════════════════
+function renderAlarms() {
+  const alarms = getAlarms();
+  document.getElementById('alarms-list').innerHTML = alarms.map((a, i) => `
+    <div class="alarm-row">
+      <span class="alarm-label">${a.label}</span>
+      <input class="alarm-time" type="time" value="${a.time}" onchange="updateAlarm(${i},'time',this.value)">
+      <label class="toggle">
+        <input type="checkbox" ${a.on ? 'checked' : ''} onchange="updateAlarm(${i},'on',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`).join('');
+}
+
+function updateAlarm(i, key, val) {
+  const alarms = getAlarms();
+  alarms[i][key] = val;
+  ls.set(LS.ALARMS, alarms);
+}
+
+// ════════════════════════════════════════════════
+//  ARCHITECT MODE
+// ════════════════════════════════════════════════
+function renderArchMode() {
+  const states = getPillarStates();
+  const goals  = getPillarGoals();
+  document.getElementById('arch-pillars').innerHTML = PILLARS.map(p => {
+    const moving = states[p] === 'Moving';
+    const vision = goals[p].vision || '—';
+    return `<div class="pillar-row">
+      <span class="pillar-row-name">${p}</span>
+      <span style="flex:2;font-size:.74rem;color:var(--text-dim);padding:0 .6rem">${escHtml(vision)}</span>
+      <span class="badge ${moving ? 'badge-moving' : 'badge-paused'}">${moving ? 'MOVING' : 'PAUSED'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  ADMIN MODE
+// ════════════════════════════════════════════════
+function renderAdminMode() {
+  const states  = getPillarStates();
+  const entries = getJournalEntries();
+  const moving  = PILLARS.filter(p => states[p] === 'Moving').length;
+  document.getElementById('admin-stats').innerHTML = `
+    <div class="pillar-row"><span class="pillar-row-name">Journal entries</span><span style="color:var(--green)">${entries.length}</span></div>
+    <div class="pillar-row"><span class="pillar-row-name">Pillars moving</span><span style="color:var(--green)">${moving} / ${PILLARS.length}</span></div>
+    <div class="pillar-row"><span class="pillar-row-name">Pillars paused</span><span style="color:rgba(255,100,100,.8)">${PILLARS.length - moving} / ${PILLARS.length}</span></div>
+    <div style="margin-top:1.2rem">
+      ${PILLARS.map(p => {
+        const m = states[p] === 'Moving';
+        return `<div class="pillar-row">
+          <span class="pillar-row-name">${p}</span>
+          <span class="badge ${m ? 'badge-moving' : 'badge-paused'}">${m ? 'MOVING' : 'PAUSED'}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ════════════════════════════════════════════════
+//  DOER MODE
+// ════════════════════════════════════════════════
+function renderDoerMode() {
+  // Morning message
+  const count = ls.get(LS.JOURNAL_COUNT, 0);
+  const last  = ls.get(LS.LAST_PILLAR, 'Social');
+  const msg   = count === 0
+    ? "Welcome to Day 1. Your journey starts with a single decision: to begin. Go do one thing today the man you want to be would do."
+    : (HERO_STORIES[last] || HERO_STORIES['Social']);
+  document.getElementById('doer-msg').textContent = msg;
+  renderTaskList();
+}
+
+function renderTaskList() {
+  const tasks = getTasks();
+  const el = document.getElementById('task-list');
+  if (!tasks.length) { el.innerHTML = '<div style="font-size:.74rem;color:var(--text-dim)">No tasks yet.</div>'; return; }
+  el.innerHTML = tasks.map((t, i) => `
+    <div class="task-item">
+      <input type="checkbox" class="task-cb" ${t.done ? 'checked' : ''} onchange="toggleTask(${i})">
+      <span class="task-text ${t.done ? 'done' : ''}">${escHtml(t.text)}</span>
+      <button class="task-del" onclick="deleteTask(${i})">✕</button>
+    </div>`).join('');
+}
+
+function addTask() {
+  const inp = document.getElementById('task-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  const tasks = getTasks();
+  tasks.push({ text, done: false });
+  saveTasks(tasks);
+  inp.value = '';
+  renderTaskList();
+}
+
+function toggleTask(i) {
+  const tasks = getTasks();
+  tasks[i].done = !tasks[i].done;
+  saveTasks(tasks);
+  renderTaskList();
+}
+
+function deleteTask(i) {
+  const tasks = getTasks();
+  tasks.splice(i, 1);
+  saveTasks(tasks);
+  renderTaskList();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement.id === 'task-input') addTask();
+});
+
+// ════════════════════════════════════════════════
+//  LAUNCH
+// ════════════════════════════════════════════════
 function launchApp() {
   document.getElementById('screen-greeting').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   updateHeaderDate();
-}
-
-function selectNav(el) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  el.classList.add('active');
-}
-
-function selectMode(el) {
-  document.querySelectorAll('.mode-item').forEach(m => m.classList.remove('active'));
-  el.classList.add('active');
+  showView('view-vision');
 }
 
 function updateHeaderDate() {
@@ -471,6 +969,9 @@ function updateHeaderDate() {
   document.getElementById('header-date').textContent =
     `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
 }
+
+function escHtml(s)  { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s)  { return escHtml(s || ''); }
 
 runBoot();
 </script>
