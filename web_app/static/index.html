@@ -3,196 +3,443 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Architect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ARCHITECT_OS</title>
     <style>
-        body { background-color: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .pillar-card { transition: all 0.3s ease; }
-        .pillar-card:hover { transform: translateY(-5px); border-color: rgba(255, 255, 255, 0.3); }
-        .hidden { display: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #000;
+            color: #e5e5e5;
+            font-family: 'Courier New', Courier, monospace;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        /* subtle scanline overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,.07) 2px,
+                rgba(0,0,0,.07) 4px
+            );
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .screen { width: 100%; max-width: 420px; }
+
+        /* ── shared util ── */
+        .hidden { display: none !important; }
+
+        /* ── OS header ── */
+        .os-header { margin-bottom: 40px; }
+        .os-title {
+            font-size: clamp(1.1rem, 4vw, 1.4rem);
+            font-weight: bold;
+            letter-spacing: .15em;
+            color: #fff;
+        }
+        .os-subtitle { font-size: .75rem; color: #555; letter-spacing: .1em; margin-top: 4px; }
+
+        /* ── welcome block ── */
+        .welcome-line {
+            font-size: clamp(1.4rem, 5vw, 1.9rem);
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        .tagline { font-size: .85rem; color: #666; margin-bottom: 32px; }
+
+        /* ── error banner ── */
+        .error-msg {
+            font-size: .8rem;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+            padding: 8px 14px;
+            margin-bottom: 20px;
+            letter-spacing: .04em;
+        }
+
+        /* ── form inputs ── */
+        .field {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #333;
+            color: #e5e5e5;
+            font-family: inherit;
+            font-size: .95rem;
+            padding: 12px 0;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border-color .2s;
+        }
+        .field::placeholder { color: #444; }
+        .field:focus { border-bottom-color: #fff; }
+
+        /* ── buttons ── */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            font-family: inherit;
+            font-size: .85rem;
+            font-weight: bold;
+            letter-spacing: .12em;
+            cursor: pointer;
+            border: none;
+            transition: opacity .2s;
+            margin-bottom: 12px;
+        }
+        .btn:hover { opacity: .85; }
+        .btn-primary { background: #fff; color: #000; }
+        .btn-secondary { background: transparent; color: #e5e5e5; border: 1px solid #333; }
+        .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+        .link-later {
+            display: block;
+            text-align: center;
+            font-size: .75rem;
+            color: #444;
+            cursor: pointer;
+            letter-spacing: .08em;
+            margin-top: 8px;
+            transition: color .2s;
+        }
+        .link-later:hover { color: #888; }
+
+        /* ── ritual / dashboard screens ── */
+        .ritual-header {
+            font-size: .65rem;
+            letter-spacing: .2em;
+            color: #555;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+        .ritual-message {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: #ccc;
+            font-style: italic;
+            margin-bottom: 40px;
+        }
+        .ritual-btn {
+            font-size: .75rem;
+            color: #555;
+            cursor: pointer;
+            letter-spacing: .08em;
+            background: none;
+            border: none;
+            font-family: inherit;
+            text-decoration: underline;
+        }
+        .ritual-btn:hover { color: #ccc; }
+
+        textarea.field {
+            height: 160px;
+            resize: none;
+            border: 1px solid #222;
+            padding: 14px;
+            margin-bottom: 20px;
+        }
+        textarea.field:focus { border-color: #555; }
+
+        /* ── pillar map ── */
+        .map-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: .15em;
+            color: #fff;
+            margin-bottom: 28px;
+        }
+        .pillars-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .pillar-card {
+            border: 1px solid #1a1a1a;
+            padding: 18px 14px;
+            transition: border-color .2s;
+        }
+        .pillar-card.moving { border-color: #e5e5e5; }
+        .pillar-name { font-size: .8rem; font-weight: bold; letter-spacing: .08em; margin-bottom: 6px; }
+        .pillar-status { font-size: .65rem; letter-spacing: .15em; color: #555; }
+        .pillar-card.moving .pillar-status { color: #e5e5e5; }
+
+        .user-line {
+            font-size: .7rem;
+            color: #444;
+            letter-spacing: .08em;
+            margin-bottom: 40px;
+        }
+        .user-line span { color: #888; }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
+<body>
 
-    <!-- LOGIN SCREEN -->
-    <div id="screen-login" class="text-center max-w-md w-full">
-        <h1 class="text-5xl font-black tracking-tighter mb-8">THE ARCHITECT</h1>
-        <p class="text-gray-400 mb-12 text-lg">Design your life. Master your pillars.</p>
-
-        <div id="auth-register" class="">
-            <input id="input-name" type="text" placeholder="Your name" class="w-full mb-4 px-6 py-4 bg-transparent border border-gray-700 rounded-full text-white placeholder-gray-600 focus:border-white outline-none transition text-base" />
-            <input id="input-email" type="email" placeholder="Your email" class="w-full mb-6 px-6 py-4 bg-transparent border border-gray-700 rounded-full text-white placeholder-gray-600 focus:border-white outline-none transition text-base" />
-            <button onclick="register()" class="w-full py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300 text-lg mb-4">
-                Begin Journey
-            </button>
-            <p class="text-gray-600 text-sm">Already have an account? <span onclick="showLoginForm()" class="text-gray-400 underline cursor-pointer hover:text-white">Sign in</span></p>
-        </div>
-
-        <div id="auth-login" class="hidden">
-            <input id="input-login-email" type="email" placeholder="Your email" class="w-full mb-6 px-6 py-4 bg-transparent border border-gray-700 rounded-full text-white placeholder-gray-600 focus:border-white outline-none transition text-base" />
-            <button onclick="login()" class="w-full py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300 text-lg mb-4">
-                Sign In
-            </button>
-            <p class="text-gray-600 text-sm">New here? <span onclick="showRegisterForm()" class="text-gray-400 underline cursor-pointer hover:text-white">Create account</span></p>
-        </div>
-
-        <p id="auth-error" class="hidden mt-4 text-red-400 text-sm"></p>
+<!-- ══ AUTH SCREEN ══ -->
+<div id="screen-auth" class="screen">
+    <div class="os-header">
+        <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
+        <div class="os-subtitle">SOVEREIGN LIFE DESIGN SYSTEM</div>
     </div>
 
-    <!-- RITUAL SCREEN -->
-    <div id="screen-ritual" class="hidden w-full max-w-2xl text-center">
-        <div id="morning-view" class="hidden">
-            <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Morning Ritual</span>
-            <h2 id="morning-message" class="text-3xl font-medium leading-relaxed mb-12 italic">"Loading your story..."</h2>
-            <button onclick="showEvening()" class="text-sm text-gray-500 underline hover:text-white transition">Evening Journal</button>
-        </div>
+    <div class="welcome-line" id="welcome-name">Welcome, Neo.</div>
+    <div class="tagline">Ready to invest in yourself?</div>
 
-        <div id="evening-view" class="hidden">
-            <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Evening Reflection</span>
-            <p id="seed-question" class="text-xl mb-8">How was your day?</p>
-            <textarea id="journal-input" class="w-full h-48 p-6 bg-transparent border-2 border-gray-800 rounded-2xl focus:border-white outline-none transition text-lg" placeholder="Write here..."></textarea>
-            <button onclick="submitJournal()" class="mt-8 px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300">
-                Submit
-            </button>
-        </div>
+    <div id="auth-error" class="error-msg hidden"></div>
+
+    <!-- shared fields -->
+    <input id="field-email" class="field" type="email" placeholder="email" autocomplete="email" />
+    <input id="field-password" class="field" type="password" placeholder="password" autocomplete="current-password" />
+
+    <!-- register-only name field -->
+    <input id="field-name" class="field hidden" type="text" placeholder="your name" autocomplete="name" />
+
+    <button id="btn-login" class="btn btn-primary" onclick="doLogin()">[ LOGIN ]</button>
+    <button id="btn-register" class="btn btn-secondary" onclick="switchToRegister()">[ CREATE ACCOUNT ]</button>
+    <span class="link-later" onclick="skipAuth()">later</span>
+</div>
+
+<!-- register mode replaces the buttons; same fields, different action -->
+
+<!-- ══ RITUAL SCREEN ══ -->
+<div id="screen-ritual" class="screen hidden">
+    <div class="os-header">
+        <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
+    </div>
+    <div class="user-line" id="ritual-user-line"></div>
+
+    <div id="morning-view">
+        <div class="ritual-header">// morning ritual</div>
+        <div id="morning-message" class="ritual-message">"Loading..."</div>
+        <button class="ritual-btn" onclick="showEvening()">evening journal →</button>
+        &nbsp;&nbsp;
+        <button class="ritual-btn" onclick="showMap()">pillar map →</button>
     </div>
 
-    <!-- MAP SCREEN -->
-    <div id="screen-map" class="hidden w-full max-w-4xl">
-        <div class="flex justify-between items-end mb-12">
-            <h2 class="text-4xl font-black tracking-tighter">PILLAR MAP</h2>
-            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back to Ritual</button>
-        </div>
-        <div id="pillars-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Pillars injected here -->
-        </div>
+    <div id="evening-view" class="hidden">
+        <div class="ritual-header">// evening reflection</div>
+        <div id="seed-question" class="tagline" style="margin-bottom:20px"></div>
+        <textarea id="journal-input" class="field" placeholder="write here..."></textarea>
+        <button class="btn btn-primary" onclick="submitJournal()">[ SUBMIT ]</button>
+        <button class="ritual-btn" style="margin-top:12px" onclick="showMorning()">← back</button>
     </div>
+</div>
 
-    <script>
-        let userId = null;
+<!-- ══ MAP SCREEN ══ -->
+<div id="screen-map" class="screen hidden">
+    <div class="os-header">
+        <div class="os-title">ARCHITECT_OS <span style="color:#444">v1.0</span></div>
+    </div>
+    <div class="user-line" id="map-user-line"></div>
+    <div class="map-title">// PILLAR MAP</div>
+    <div id="pillars-grid" class="pillars-grid"></div>
+    <button class="ritual-btn" onclick="showRitual()">← ritual</button>
+</div>
 
-        function showRegisterForm() {
-            document.getElementById('auth-register').classList.remove('hidden');
-            document.getElementById('auth-login').classList.add('hidden');
-            document.getElementById('auth-error').classList.add('hidden');
-        }
+<script>
+    let userId = null;
+    let userName = "Neo";
+    let registerMode = false;
 
-        function showLoginForm() {
-            document.getElementById('auth-register').classList.add('hidden');
-            document.getElementById('auth-login').classList.remove('hidden');
-            document.getElementById('auth-error').classList.add('hidden');
-        }
+    const SEED_QUESTIONS = [
+        "Who in your life actually pushes you to be better, and who is just taking up space?",
+        "If your income vanished tomorrow, how many days could you survive?",
+        "When was the last time you felt peace without a screen or distraction?",
+        "What is one skill you'd spend 10,000 hours mastering just for pride?",
+        "Do the people closest to you feel seen and heard by you?",
+        "What belief did you hold for years that you now know is wrong?",
+        "If you disappeared tomorrow, what would the world actually miss?"
+    ];
 
-        function showAuthError(msg) {
-            const el = document.getElementById('auth-error');
-            el.textContent = msg;
-            el.classList.remove('hidden');
-        }
+    function showError(msg) {
+        const el = document.getElementById('auth-error');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
 
-        async function register() {
-            const name = document.getElementById('input-name').value.trim();
-            const email = document.getElementById('input-email').value.trim();
-            if (!email) { showAuthError('Please enter your email.'); return; }
-            document.getElementById('auth-error').classList.add('hidden');
-            const res = await fetch('/auth/register', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email, name: name || 'Architect' })
-            });
-            if (res.status === 409) { showAuthError('Account already exists. Sign in instead.'); showLoginForm(); return; }
-            if (!res.ok) { const d = await res.json(); showAuthError(d.detail || 'Registration failed.'); return; }
-            const data = await res.json();
-            userId = data.user_id;
-            showRitual();
-        }
+    function clearError() {
+        document.getElementById('auth-error').classList.add('hidden');
+    }
 
-        async function login() {
-            const email = document.getElementById('input-login-email').value.trim();
-            if (!email) { showAuthError('Please enter your email.'); return; }
-            document.getElementById('auth-error').classList.add('hidden');
-            const res = await fetch('/auth/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email })
-            });
-            if (res.status === 404) { showAuthError('No account found. Register first.'); showRegisterForm(); return; }
-            if (!res.ok) { const d = await res.json(); showAuthError(d.detail || 'Login failed.'); return; }
-            const data = await res.json();
-            userId = data.user_id;
-            showRitual();
-        }
+    function switchToRegister() {
+        registerMode = true;
+        document.getElementById('field-name').classList.remove('hidden');
+        document.getElementById('field-password').setAttribute('autocomplete', 'new-password');
+        document.getElementById('btn-login').textContent = '[ CREATE ACCOUNT ]';
+        document.getElementById('btn-login').onclick = doRegister;
+        document.getElementById('btn-register').textContent = '← back to login';
+        document.getElementById('btn-register').onclick = switchToLogin;
+        document.getElementById('welcome-name').textContent = 'Create your account.';
+        clearError();
+    }
 
-        async function showRitual() {
-            hideAll();
-            document.getElementById('screen-ritual').classList.remove('hidden');
-            
-            // Try to show morning first
-            const res = await fetch(`/ritual/morning/${userId}`);
-            const data = await res.json();
-            document.getElementById('morning-message').innerText = data.message;
-            document.getElementById('morning-view').classList.remove('hidden');
-        }
+    function switchToLogin() {
+        registerMode = false;
+        document.getElementById('field-name').classList.add('hidden');
+        document.getElementById('field-password').setAttribute('autocomplete', 'current-password');
+        document.getElementById('btn-login').textContent = '[ LOGIN ]';
+        document.getElementById('btn-login').onclick = doLogin;
+        document.getElementById('btn-register').textContent = '[ CREATE ACCOUNT ]';
+        document.getElementById('btn-register').onclick = switchToRegister;
+        document.getElementById('welcome-name').textContent = 'Welcome, Neo.';
+        clearError();
+    }
 
-        function showEvening() {
-            document.getElementById('morning-view').classList.add('hidden');
-            document.getElementById('evening-view').classList.remove('hidden');
-            
-            const questions = [
-                "Who in your life actually pushes you to be better, and who is just taking up space?",
-                "If your income vanished tomorrow, how many days could you survive?",
-                "When was the last time you felt peace without a screen or distraction?",
-                "What is one skill you'd spend 10,000 hours mastering just for pride?",
-                "Do the people closest to you feel seen and heard by you?",
-                "What belief did you hold for years that you now know is wrong?",
-                "If you disappeared tomorrow, what would the world actually miss?"
-            ];
-            document.getElementById('seed-question').innerText = questions[Math.floor(Math.random() * questions.length)];
-        }
-
-        async function submitJournal() {
-            const content = document.getElementById('journal-input').value;
-            await fetch('/ritual/evening', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user_id: userId, content: content })
-            });
-            alert("Journal saved. See you in the morning.");
-            showRitual();
-        }
-
-        async function showMap() {
-            hideAll();
-            document.getElementById('screen-map').classList.remove('hidden');
-            const res = await fetch(`/user/pillars/${userId}`);
-            const pillars = await res.json();
-            
-            const grid = document.getElementById('pillars-grid');
-            grid.innerHTML = '';
-            pillars.forEach(p => {
-                const card = document.createElement('div');
-                card.className = `pillar-card glass p-8 rounded-3xl text-center ${p.status === 'Moving' ? 'border-white' : 'border-gray-800'}`;
-                card.innerHTML = `
-                    <h3 class="text-xl font-bold mb-2">${p.name}</h3>
-                    <span class="text-xs uppercase tracking-widest ${p.status === 'Moving' ? 'text-green-400' : 'text-gray-500'}">${p.status}</span>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function hideAll() {
-            document.getElementById('screen-login').classList.add('hidden');
-            document.getElementById('screen-ritual').classList.add('hidden');
-            document.getElementById('screen-map').classList.add('hidden');
-            document.getElementById('morning-view').classList.add('hidden');
-            document.getElementById('evening-view').classList.add('hidden');
-        }
-        
-        // Add a keyboard shortcut for the map (since we have no buttons)
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'm') showMap();
-            if (e.key === 'r') showRitual();
+    async function doLogin() {
+        const email = document.getElementById('field-email').value.trim();
+        const password = document.getElementById('field-password').value;
+        if (!email || !password) { showError('Email and password are required.'); return; }
+        clearError();
+        setBusy(true);
+        const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
         });
-    </script>
+        setBusy(false);
+        if (!res.ok) {
+            const d = await res.json();
+            showError(d.detail || 'Wrong email or password.');
+            return;
+        }
+        const data = await res.json();
+        userId = data.user_id;
+        userName = data.name || email.split('@')[0];
+        showRitual();
+    }
+
+    async function doRegister() {
+        const email = document.getElementById('field-email').value.trim();
+        const password = document.getElementById('field-password').value;
+        const name = document.getElementById('field-name').value.trim();
+        if (!email || !password) { showError('Email and password are required.'); return; }
+        if (password.length < 6) { showError('Password must be at least 6 characters.'); return; }
+        clearError();
+        setBusy(true);
+        const res = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, name })
+        });
+        setBusy(false);
+        if (res.status === 409) { showError('Account already exists.'); switchToLogin(); return; }
+        if (!res.ok) { const d = await res.json(); showError(d.detail || 'Registration failed.'); return; }
+        const data = await res.json();
+        userId = data.user_id;
+        userName = data.name || email.split('@')[0];
+        showRitual();
+    }
+
+    function skipAuth() {
+        userId = null;
+        userName = "Guest";
+        showRitual();
+    }
+
+    function setBusy(busy) {
+        document.getElementById('btn-login').disabled = busy;
+        document.getElementById('btn-register').disabled = busy;
+    }
+
+    function setUserLine(id) {
+        const txt = userId ? `user: <span>${userName}</span>` : `user: <span>guest</span>`;
+        document.getElementById(id).innerHTML = txt;
+    }
+
+    async function showRitual() {
+        hideAll();
+        document.getElementById('screen-ritual').classList.remove('hidden');
+        showMorning();
+        setUserLine('ritual-user-line');
+
+        const url = userId ? `/ritual/morning/${userId}` : null;
+        if (url) {
+            const res = await fetch(url);
+            const data = await res.json();
+            document.getElementById('morning-message').textContent = `"${data.message}"`;
+        } else {
+            document.getElementById('morning-message').textContent =
+                '"Begin your journey. Create an account to track your pillars and unlock your morning ritual."';
+        }
+    }
+
+    function showMorning() {
+        document.getElementById('morning-view').classList.remove('hidden');
+        document.getElementById('evening-view').classList.add('hidden');
+    }
+
+    function showEvening() {
+        document.getElementById('morning-view').classList.add('hidden');
+        document.getElementById('evening-view').classList.remove('hidden');
+        const q = SEED_QUESTIONS[Math.floor(Math.random() * SEED_QUESTIONS.length)];
+        document.getElementById('seed-question').textContent = q;
+    }
+
+    async function submitJournal() {
+        if (!userId) { showRitual(); return; }
+        const content = document.getElementById('journal-input').value.trim();
+        if (!content) return;
+        await fetch('/ritual/evening', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, content })
+        });
+        document.getElementById('journal-input').value = '';
+        showRitual();
+    }
+
+    async function showMap() {
+        hideAll();
+        document.getElementById('screen-map').classList.remove('hidden');
+        setUserLine('map-user-line');
+
+        const grid = document.getElementById('pillars-grid');
+        grid.innerHTML = '';
+
+        if (!userId) {
+            grid.innerHTML = '<p style="color:#444;font-size:.8rem">Sign in to view your pillar map.</p>';
+            return;
+        }
+
+        const res = await fetch(`/user/pillars/${userId}`);
+        const pillars = await res.json();
+        pillars.forEach(p => {
+            const card = document.createElement('div');
+            card.className = `pillar-card${p.status === 'Moving' ? ' moving' : ''}`;
+            card.innerHTML = `
+                <div class="pillar-name">${p.name.toUpperCase()}</div>
+                <div class="pillar-status">${p.status.toUpperCase()}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function hideAll() {
+        document.getElementById('screen-auth').classList.add('hidden');
+        document.getElementById('screen-ritual').classList.add('hidden');
+        document.getElementById('screen-map').classList.add('hidden');
+    }
+
+    window.addEventListener('keydown', e => {
+        if (e.key === 'm' && userId) showMap();
+        if (e.key === 'r') showRitual();
+        if (e.key === 'Escape') {
+            hideAll();
+            document.getElementById('screen-auth').classList.remove('hidden');
+        }
+    });
+</script>
 </body>
 </html>
