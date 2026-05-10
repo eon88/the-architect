@@ -25,7 +25,11 @@
     </div>
 
     <!-- RITUAL SCREEN -->
-    <div id="screen-ritual" class="hidden w-full max-w-2xl text-center">
+    <div id="screen-ritual" class="hidden w-full max-w-2xl">
+        <div class="flex justify-end mb-8">
+            <button onclick="showMap()" class="text-sm text-gray-400 hover:text-white">Pillar Map</button>
+        </div>
+        <div class="text-center">
         <div id="morning-view" class="hidden">
             <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Morning Ritual</span>
             <h2 id="morning-message" class="text-3xl font-medium leading-relaxed mb-12 italic">"Loading your story..."</h2>
@@ -39,6 +43,7 @@
             <button onclick="submitJournal()" class="mt-8 px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300">
                 Submit
             </button>
+        </div>
         </div>
     </div>
 
