@@ -1,3 +1,6 @@
+# Test databases
+*.db
+
 # Python
 __pycache__/
 *.py[cod]

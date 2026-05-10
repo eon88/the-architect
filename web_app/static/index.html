@@ -7,19 +7,47 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
         .pillar-card { transition: all 0.3s ease; }
-        .pillar-card:hover { transform: translateY(-5px); border-color: rgba(255, 255, 255, 0.3); }
+        .pillar-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
         .hidden { display: none; }
+
+        /* Toast */
+        #toast {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(120%);
+            background: #1a1a1a; border: 1px solid rgba(255,255,255,0.15);
+            color: #e5e5e5; padding: 0.9rem 2rem; border-radius: 9999px;
+            font-size: 0.9rem; transition: transform 0.3s ease; z-index: 100;
+            white-space: nowrap;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+        #toast.error { border-color: rgba(239,68,68,0.5); color: #fca5a5; }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block; width: 16px; height: 16px;
+            border: 2px solid rgba(0,0,0,0.3); border-top-color: #000;
+            border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- TOAST -->
+    <div id="toast"></div>
 
     <!-- LOGIN SCREEN -->
     <div id="screen-login" class="text-center max-w-md w-full">
         <h1 class="text-5xl font-black tracking-tighter mb-8">THE ARCHITECT</h1>
         <p class="text-gray-400 mb-12 text-lg">Design your life. Master your pillars.</p>
-        <button onclick="login()" class="w-full py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300 text-lg">
+        <input
+            id="email-input"
+            type="email"
+            placeholder="Your email address"
+            class="w-full py-4 px-6 mb-4 bg-transparent border-2 border-gray-800 rounded-full focus:border-white outline-none transition text-center text-lg"
+        />
+        <button id="login-btn" onclick="login()" class="w-full py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300 text-lg">
             Begin Journey
         </button>
     </div>
@@ -29,14 +57,26 @@
         <div id="morning-view" class="hidden">
             <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Morning Ritual</span>
             <h2 id="morning-message" class="text-3xl font-medium leading-relaxed mb-12 italic">"Loading your story..."</h2>
-            <button onclick="showEvening()" class="text-sm text-gray-500 underline hover:text-white transition">Evening Journal</button>
+            <div class="flex justify-center gap-6">
+                <button onclick="showEvening()" class="text-sm text-gray-500 underline hover:text-white transition">Evening Journal</button>
+                <button onclick="showMap()" class="text-sm text-gray-500 underline hover:text-white transition">Pillar Map</button>
+            </div>
         </div>
 
         <div id="evening-view" class="hidden">
             <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Evening Reflection</span>
-            <p id="seed-question" class="text-xl mb-8">How was your day?</p>
-            <textarea id="journal-input" class="w-full h-48 p-6 bg-transparent border-2 border-gray-800 rounded-2xl focus:border-white outline-none transition text-lg" placeholder="Write here..."></textarea>
-            <button onclick="submitJournal()" class="mt-8 px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300">
+            <p id="seed-question" class="text-xl mb-8 leading-relaxed"></p>
+            <textarea
+                id="journal-input"
+                class="w-full h-48 p-6 bg-transparent border-2 border-gray-800 rounded-2xl focus:border-white outline-none transition text-lg"
+                placeholder="Write here..."
+                maxlength="10000"
+            ></textarea>
+            <div class="flex justify-between items-center mt-2 mb-8">
+                <button onclick="showRitual()" class="text-sm text-gray-500 hover:text-white transition">Back</button>
+                <span id="char-count" class="text-xs text-gray-600">0 / 10,000</span>
+            </div>
+            <button id="submit-btn" onclick="submitJournal()" class="px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300">
                 Submit
             </button>
         </div>
@@ -54,35 +94,112 @@
     </div>
 
     <script>
-        let userId = null;
+        // ---------------------------------------------------------------------------
+        // Session state (persisted across page refreshes)
+        // ---------------------------------------------------------------------------
+        let authToken  = sessionStorage.getItem('architect_token');
+        let userId     = sessionStorage.getItem('architect_user_id');
 
+        // ---------------------------------------------------------------------------
+        // Toast
+        // ---------------------------------------------------------------------------
+        let toastTimer = null;
+        function showToast(msg, isError = false) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.toggle('error', isError);
+            el.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+        }
+
+        // ---------------------------------------------------------------------------
+        // Authenticated fetch wrapper
+        // ---------------------------------------------------------------------------
+        async function apiFetch(url, options = {}) {
+            const headers = { 'Content-Type': 'application/json', ...options.headers };
+            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+            const res = await fetch(url, { ...options, headers });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(err.detail || `HTTP ${res.status}`);
+            }
+            return res.json();
+        }
+
+        // ---------------------------------------------------------------------------
+        // Char counter
+        // ---------------------------------------------------------------------------
+        document.getElementById('journal-input').addEventListener('input', function () {
+            document.getElementById('char-count').textContent = `${this.value.length.toLocaleString()} / 10,000`;
+        });
+
+        // ---------------------------------------------------------------------------
+        // Auth
+        // ---------------------------------------------------------------------------
         async function login() {
-            // Simulating Google Login for MVP
-            const res = await fetch('/auth/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: 'test@example.com', name: 'User' })
-            });
-            const data = await res.json();
-            userId = data.user_id;
-            showRitual();
+            const email = document.getElementById('email-input').value.trim();
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showToast('Enter a valid email address.', true);
+                return;
+            }
+
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>';
+
+            try {
+                const data = await apiFetch('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, name: email.split('@')[0] }),
+                });
+                authToken = data.token;
+                userId    = data.user_id;
+                sessionStorage.setItem('architect_token', authToken);
+                sessionStorage.setItem('architect_user_id', userId);
+                await showRitual();
+            } catch (e) {
+                showToast(e.message, true);
+                btn.disabled = false;
+                btn.textContent = 'Begin Journey';
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // Screens
+        // ---------------------------------------------------------------------------
+        function hideAll() {
+            ['screen-login','screen-ritual','screen-map','morning-view','evening-view']
+                .forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
         async function showRitual() {
+            if (!authToken) { showLoginScreen(); return; }
             hideAll();
             document.getElementById('screen-ritual').classList.remove('hidden');
-            
-            // Try to show morning first
-            const res = await fetch(`/ritual/morning/${userId}`);
-            const data = await res.json();
-            document.getElementById('morning-message').innerText = data.message;
+
+            const msgEl = document.getElementById('morning-message');
+            msgEl.textContent = 'Loading your story...';
             document.getElementById('morning-view').classList.remove('hidden');
+
+            try {
+                const data = await apiFetch('/ritual/morning');
+                msgEl.textContent = `"${data.message}"`;
+            } catch (e) {
+                msgEl.textContent = 'Could not load your ritual. Try again shortly.';
+                showToast(e.message, true);
+            }
+        }
+
+        function showLoginScreen() {
+            hideAll();
+            document.getElementById('screen-login').classList.remove('hidden');
         }
 
         function showEvening() {
             document.getElementById('morning-view').classList.add('hidden');
             document.getElementById('evening-view').classList.remove('hidden');
-            
+
             const questions = [
                 "Who in your life actually pushes you to be better, and who is just taking up space?",
                 "If your income vanished tomorrow, how many days could you survive?",
@@ -90,54 +207,86 @@
                 "What is one skill you'd spend 10,000 hours mastering just for pride?",
                 "Do the people closest to you feel seen and heard by you?",
                 "What belief did you hold for years that you now know is wrong?",
-                "If you disappeared tomorrow, what would the world actually miss?"
+                "If you disappeared tomorrow, what would the world actually miss?",
             ];
-            document.getElementById('seed-question').innerText = questions[Math.floor(Math.random() * questions.length)];
+            document.getElementById('seed-question').textContent =
+                questions[Math.floor(Math.random() * questions.length)];
+            document.getElementById('journal-input').value = '';
+            document.getElementById('char-count').textContent = '0 / 10,000';
         }
 
         async function submitJournal() {
-            const content = document.getElementById('journal-input').value;
-            await fetch('/ritual/evening', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user_id: userId, content: content })
-            });
-            alert("Journal saved. See you in the morning.");
-            showRitual();
+            const content = document.getElementById('journal-input').value.trim();
+            if (!content) { showToast('Write something first.', true); return; }
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+            try {
+                await apiFetch('/ritual/evening', {
+                    method: 'POST',
+                    body: JSON.stringify({ content }),
+                });
+                showToast('Journal saved. See you in the morning.');
+                await showRitual();
+            } catch (e) {
+                showToast(e.message, true);
+                btn.disabled = false;
+                btn.textContent = 'Submit';
+            }
         }
 
         async function showMap() {
+            if (!authToken) { showLoginScreen(); return; }
             hideAll();
             document.getElementById('screen-map').classList.remove('hidden');
-            const res = await fetch(`/user/pillars/${userId}`);
-            const pillars = await res.json();
-            
+
             const grid = document.getElementById('pillars-grid');
-            grid.innerHTML = '';
-            pillars.forEach(p => {
-                const card = document.createElement('div');
-                card.className = `pillar-card glass p-8 rounded-3xl text-center ${p.status === 'Moving' ? 'border-white' : 'border-gray-800'}`;
-                card.innerHTML = `
-                    <h3 class="text-xl font-bold mb-2">${p.name}</h3>
-                    <span class="text-xs uppercase tracking-widest ${p.status === 'Moving' ? 'text-green-400' : 'text-gray-500'}">${p.status}</span>
-                `;
-                grid.appendChild(card);
-            });
+            grid.textContent = '';
+
+            try {
+                const pillars = await apiFetch('/user/pillars');
+                pillars.forEach(p => {
+                    const card = document.createElement('div');
+                    const isMoving = p.status === 'Moving';
+                    card.className = `pillar-card glass p-8 rounded-3xl text-center ${isMoving ? 'border-white' : 'border-gray-800'}`;
+
+                    const title = document.createElement('h3');
+                    title.className = 'text-xl font-bold mb-2';
+                    title.textContent = p.name;
+
+                    const badge = document.createElement('span');
+                    badge.className = `text-xs uppercase tracking-widest ${isMoving ? 'text-green-400' : 'text-gray-500'}`;
+                    badge.textContent = p.status;
+
+                    card.appendChild(title);
+                    card.appendChild(badge);
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                showToast(e.message, true);
+            }
         }
 
-        function hideAll() {
-            document.getElementById('screen-login').classList.add('hidden');
-            document.getElementById('screen-ritual').classList.add('hidden');
-            document.getElementById('screen-map').classList.add('hidden');
-            document.getElementById('morning-view').classList.add('hidden');
-            document.getElementById('evening-view').classList.add('hidden');
-        }
-        
-        // Add a keyboard shortcut for the map (since we have no buttons)
-        window.addEventListener('keydown', (e) => {
+        // ---------------------------------------------------------------------------
+        // Keyboard shortcuts
+        // ---------------------------------------------------------------------------
+        window.addEventListener('keydown', e => {
             if (e.key === 'm') showMap();
             if (e.key === 'r') showRitual();
         });
+
+        // ---------------------------------------------------------------------------
+        // Boot: resume session if token exists
+        // ---------------------------------------------------------------------------
+        (function boot() {
+            if (authToken) {
+                showRitual();
+            } else {
+                showLoginScreen();
+            }
+        })();
     </script>
 </body>
 </html>

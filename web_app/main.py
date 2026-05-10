@@ -1,15 +1,97 @@
+import logging
+import datetime
+from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
-from database import SessionLocal, User, PillarState, JournalEntry
-from pipeline import ArchitectPipeline
-import datetime
 
-app = FastAPI()
+from config import CORS_ORIGINS, configure_logging
+from database import SessionLocal, User, PillarState, JournalEntry, PILLARS
+from pipeline import ArchitectPipeline
+from auth import create_session, get_current_user_id
+
+_STATIC_DIR = Path(__file__).parent / "static"
+
+configure_logging()
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="The Architect", version="0.1.0")
 pipeline = ArchitectPipeline()
 
-# Dependency to get DB session
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+
+# ---------------------------------------------------------------------------
+# Request / Response models
+# ---------------------------------------------------------------------------
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    name: str = "Architect"
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("name must not be blank")
+        return v[:200]
+
+
+class LoginResponse(BaseModel):
+    user_id: int
+    email: str
+    token: str
+
+
+class MorningRitualResponse(BaseModel):
+    message: str
+
+
+class JournalRequest(BaseModel):
+    content: str
+
+    @field_validator("content")
+    @classmethod
+    def content_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Journal entry must not be blank")
+        if len(v) > 10_000:
+            raise ValueError("Journal entry is too long (max 10,000 characters)")
+        return v
+
+
+class JournalResponse(BaseModel):
+    status: str
+    pillar_updated: str
+    momentum: str
+
+
+class PillarResponse(BaseModel):
+    name: str
+    status: str
+
+
+class HealthResponse(BaseModel):
+    status: str
+
+
+# ---------------------------------------------------------------------------
+# Dependency
+# ---------------------------------------------------------------------------
+
 def get_db():
     db = SessionLocal()
     try:
@@ -17,65 +99,103 @@ def get_db():
     finally:
         db.close()
 
-# Serve static files (the frontend)
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/")
-async def read_index():
-    return FileResponse("static/index.html")
-
-# --- API Endpoints ---
-
-@app.post("/auth/login")
-async def login(data: dict, db: Session = Depends(get_db)):
-    email = data.get("email")
-    user = db.query(User).filter(User.email == email).first()
+def require_user(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+) -> User:
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        user = User(email=email, full_name=data.get("name", "Architect"))
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+@app.get("/", include_in_schema=False)
+async def read_index():
+    return FileResponse(str(_STATIC_DIR / "index.html"))
+
+
+@app.get("/health", response_model=HealthResponse, tags=["system"])
+async def health():
+    return {"status": "ok"}
+
+
+@app.post("/auth/login", response_model=LoginResponse, tags=["auth"])
+async def login(data: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+    if not user:
+        user = User(email=data.email, full_name=data.name)
         db.add(user)
+        db.flush()
+        for pillar in PILLARS:
+            db.add(PillarState(user_id=user.id, pillar_name=pillar, status="Paused"))
         db.commit()
         db.refresh(user)
-        # Initialize pillars for new user
-        pillars = ["Social", "Financial", "Spiritual", "Craft/Career", "Emotional/Intimacy", "Intellectual", "Legacy"]
-        for p in pillars:
-            db.add(PillarState(user_id=user.id, pillar_name=p, status="Paused"))
-        db.commit()
-    return {"user_id": user.id, "email": user.email}
+        logger.info("New user registered: %s", data.email)
+    else:
+        logger.info("Existing user logged in: %s", data.email)
 
-@app.get("/ritual/morning/{user_id}")
-async def get_morning_ritual(user_id: int, db: Session = Depends(get_db)):
-    # Get the most recent journal entry to generate a story
-    entry = db.query(JournalEntry).filter(JournalEntry.user_id == user_id).order_by(JournalEntry.timestamp.desc()).first()
-    
+    token = create_session(user.id)
+    return LoginResponse(user_id=user.id, email=user.email, token=token)
+
+
+@app.get("/ritual/morning", response_model=MorningRitualResponse, tags=["ritual"])
+async def get_morning_ritual(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    entry = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.user_id == user.id)
+        .order_by(JournalEntry.timestamp.desc())
+        .first()
+    )
+
     if not entry:
-        return {"message": "Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do."}
-    
-    # Run the pipeline on the last entry
-    result = pipeline.process_journal(entry.content)
-    return {"message": result["message"]}
+        return MorningRitualResponse(
+            message="Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do."
+        )
 
-@app.post("/ritual/evening")
-async def submit_evening_journal(data: dict, db: Session = Depends(get_db)):
-    user_id = data.get("user_id")
-    content = data.get("content")
-    
-    # Save the journal entry
-    entry = JournalEntry(user_id=user_id, content=content)
+    result = pipeline.process_journal(entry.content)
+    return MorningRitualResponse(message=result["message"])
+
+
+@app.post("/ritual/evening", response_model=JournalResponse, tags=["ritual"])
+async def submit_evening_journal(
+    data: JournalRequest,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    result = pipeline.process_journal(data.content)
+
+    entry = JournalEntry(
+        user_id=user.id,
+        content=data.content,
+        pillar_associated=result["pillar"],
+    )
     db.add(entry)
-    
-    # Process with pipeline to update pillar status
-    result = pipeline.process_journal(content)
-    
-    # Update pillar state
-    pillar = db.query(PillarState).filter(PillarState.user_id == user_id, PillarState.pillar_name == result["pillar"]).first()
+
+    pillar = (
+        db.query(PillarState)
+        .filter(PillarState.user_id == user.id, PillarState.pillar_name == result["pillar"])
+        .first()
+    )
     if pillar:
         pillar.status = result["momentum"]
         pillar.last_updated = datetime.datetime.utcnow()
-        db.commit()
-    
-    return {"status": "success", "pillar_updated": result["pillar"], "momentum": result["momentum"]}
 
-@app.get("/user/pillars/{user_id}")
-async def get_pillars(user_id: int, db: Session = Depends(get_db)):
-    pillars = db.query(PillarState).filter(PillarState.user_id == user_id).all()
-    return [{"name": p.pillar_name, "status": p.status} for p in pillars]
+    db.commit()
+    logger.info("Evening journal processed for user_id=%d, pillar=%s", user.id, result["pillar"])
+
+    return JournalResponse(
+        status="success",
+        pillar_updated=result["pillar"],
+        momentum=result["momentum"],
+    )
+
+
+@app.get("/user/pillars", response_model=list[PillarResponse], tags=["user"])
+async def get_pillars(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    pillars = db.query(PillarState).filter(PillarState.user_id == user.id).all()
+    return [PillarResponse(name=p.pillar_name, status=p.status) for p in pillars]
