@@ -21,6 +21,9 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-architect_user}:${POSTGRES_PASSWORD:-architect_password}@db:5432/${POSTGRES_DB:-architect_db}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
     depends_on:
       db:
         condition: service_healthy

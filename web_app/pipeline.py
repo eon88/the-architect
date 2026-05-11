@@ -1,13 +1,20 @@
 import json
 import logging
 import re
+import urllib.request
+import urllib.error
+from config import GEMINI_API_KEY
 from prompts import PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT, AUDITOR_PROMPT
 
 logger = logging.getLogger(__name__)
 
+GEMINI_MODEL = "gemini-2.0-flash"
+_GEMINI_BASE = (
+    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+)
+
 # ---------------------------------------------------------------------------
-# Mock LLM — replace call_llm() body with a real API call (Claude, Gemma, etc.)
-# when an LLM API key is available. The pipeline orchestration stays the same.
+# Mock fallback — used when GEMINI_API_KEY is absent or the API call fails
 # ---------------------------------------------------------------------------
 
 _PILLAR_KEYWORDS: dict[str, list[str]] = {
@@ -20,7 +27,6 @@ _PILLAR_KEYWORDS: dict[str, list[str]] = {
     "Social": ["friend", "social", "tribe", "people", "alone", "community", "network", "isolation", "group", "disconnect"],
 }
 
-# Pre-compiled word-boundary patterns to avoid substring false positives (e.g. "broke" in "heartbroken")
 _PILLAR_PATTERNS: dict[str, re.Pattern] = {
     pillar: re.compile(r'\b(' + '|'.join(re.escape(k) for k in keywords) + r')\b')
     for pillar, keywords in _PILLAR_KEYWORDS.items()
@@ -66,15 +72,8 @@ def _detect_pillar(text: str) -> str:
     return "Social"
 
 
-def call_llm(system_prompt: str, user_input: str) -> str:
-    """
-    Stub LLM. Replace this function body with a real API call.
-    The surrounding pipeline logic does not need to change.
-    """
-    # Use the opening line to identify persona — avoids false matches when one
-    # prompt references another (e.g. Strategist prompt mentions "Profiler").
+def _mock_llm(system_prompt: str, user_input: str) -> str:
     first_line = system_prompt.strip().splitlines()[0] if system_prompt else ""
-
     try:
         if "Profiler" in first_line:
             pillar = _detect_pillar(user_input)
@@ -85,7 +84,6 @@ def call_llm(system_prompt: str, user_input: str) -> str:
                 "core_issue": f"User is working through {pillar.lower()} challenges",
                 "fact": "Extracted from journal entry",
             })
-
         if "Strategist" in first_line:
             data = json.loads(user_input)
             momentum = "Paused" if data.get("state") == "negative" else "Moving"
@@ -94,20 +92,70 @@ def call_llm(system_prompt: str, user_input: str) -> str:
                 "momentum": momentum,
                 "strategic_goal": f"Address {data.get('core_issue', 'current challenges')}",
             })
-
         if "Storyteller" in first_line:
             strategy = json.loads(user_input)
             pillar = strategy.get("priority_pillar", "Social")
             return _STORIES.get(pillar, "The greatest battles are won before they are fought — through discipline and resolve.")
-
         if "Auditor" in first_line:
             return f"Listen. {user_input} Stop worrying about the noise and focus on the work. That's how you win."
-
     except (json.JSONDecodeError, KeyError) as e:
-        logger.error("LLM stub error for prompt type: %s", e)
-
+        logger.error("Mock LLM error: %s", e)
     return "Focus on what you can control today. Everything else is noise."
 
+
+# ---------------------------------------------------------------------------
+# Real Gemini call via REST API (no SDK required)
+# ---------------------------------------------------------------------------
+
+def _call_gemini(system_prompt: str, user_input: str, json_mode: bool = False) -> str:
+    url = f"{_GEMINI_BASE}?key={GEMINI_API_KEY}"
+    body: dict = {
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": [{"text": user_input}]}],
+    }
+    if json_mode:
+        body["generationConfig"] = {"responseMimeType": "application/json"}
+
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = json.loads(resp.read())
+
+    return data["candidates"][0]["content"]["parts"][0]["text"]
+
+
+# ---------------------------------------------------------------------------
+# Public interface — tries Gemini, falls back to mock on any failure
+# ---------------------------------------------------------------------------
+
+def call_llm(system_prompt: str, user_input: str) -> str:
+    if not GEMINI_API_KEY:
+        logger.debug("No GEMINI_API_KEY set, using mock LLM.")
+        return _mock_llm(system_prompt, user_input)
+
+    first_line = system_prompt.strip().splitlines()[0] if system_prompt else ""
+    json_mode = "Profiler" in first_line or "Strategist" in first_line
+
+    try:
+        result = _call_gemini(system_prompt, user_input, json_mode=json_mode)
+        logger.debug("Gemini response received (json_mode=%s)", json_mode)
+        return result
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        logger.error("Gemini HTTP error %d: %s — falling back to mock", e.code, body)
+    except Exception as e:
+        logger.error("Gemini call failed: %s — falling back to mock", e)
+
+    return _mock_llm(system_prompt, user_input)
+
+
+# ---------------------------------------------------------------------------
+# Pipeline orchestration
+# ---------------------------------------------------------------------------
 
 class ArchitectPipeline:
     def process_journal(self, journal_text: str) -> dict:
