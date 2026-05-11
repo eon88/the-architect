@@ -74,4 +74,12 @@ class JournalEntry(Base):
     pillar_associated = Column(String(50), nullable=True)
 
 
+class UserFact(Base):
+    __tablename__ = "user_facts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    content = Column(String(500), nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
 Base.metadata.create_all(bind=engine)

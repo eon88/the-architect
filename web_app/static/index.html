@@ -173,6 +173,8 @@
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
+        let currentSeedQuestion = '';
+
         async function showRitual() {
             if (!authToken) { showLoginScreen(); return; }
             hideAll();
@@ -185,6 +187,7 @@
             try {
                 const data = await apiFetch('/ritual/morning');
                 msgEl.textContent = `"${data.message}"`;
+                currentSeedQuestion = data.seed_question || '';
             } catch (e) {
                 msgEl.textContent = 'Could not load your ritual. Try again shortly.';
                 showToast(e.message, true);
@@ -199,18 +202,7 @@
         function showEvening() {
             document.getElementById('morning-view').classList.add('hidden');
             document.getElementById('evening-view').classList.remove('hidden');
-
-            const questions = [
-                "Who in your life actually pushes you to be better, and who is just taking up space?",
-                "If your income vanished tomorrow, how many days could you survive?",
-                "When was the last time you felt peace without a screen or distraction?",
-                "What is one skill you'd spend 10,000 hours mastering just for pride?",
-                "Do the people closest to you feel seen and heard by you?",
-                "What belief did you hold for years that you now know is wrong?",
-                "If you disappeared tomorrow, what would the world actually miss?",
-            ];
-            document.getElementById('seed-question').textContent =
-                questions[Math.floor(Math.random() * questions.length)];
+            document.getElementById('seed-question').textContent = currentSeedQuestion;
             document.getElementById('journal-input').value = '';
             document.getElementById('char-count').textContent = '0 / 10,000';
         }

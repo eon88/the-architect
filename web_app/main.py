@@ -1,5 +1,6 @@
 import logging
 import datetime
+import random
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,16 +10,17 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from config import CORS_ORIGINS, configure_logging
-from database import SessionLocal, User, PillarState, JournalEntry, PILLARS
+from database import SessionLocal, User, PillarState, JournalEntry, UserFact, PILLARS
 from pipeline import ArchitectPipeline
 from auth import create_session, get_current_user_id
+from context import build_user_context
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
 configure_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="The Architect", version="0.1.0")
+app = FastAPI(title="The Architect", version="0.2.0")
 pipeline = ArchitectPipeline()
 
 app.add_middleware(
@@ -30,6 +32,36 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+# ---------------------------------------------------------------------------
+# Seed questions — first 7 sessions are sequential (one per pillar), after
+# that we target the most-neglected pillar dynamically.
+# ---------------------------------------------------------------------------
+
+_SEED_QUESTIONS: list[tuple[str, str]] = [
+    ("Social",             "Who in your life actually pushes you to be better, and who is just taking up space?"),
+    ("Financial",          "If your income vanished tomorrow, how many days could you survive?"),
+    ("Spiritual",          "When was the last time you felt peace without a screen or distraction?"),
+    ("Craft/Career",       "What is one skill you'd spend 10,000 hours mastering just for the pride of it?"),
+    ("Emotional/Intimacy", "Do the people closest to you feel truly seen and heard by you?"),
+    ("Intellectual",       "What is a belief you held for years that you now know is wrong?"),
+    ("Legacy",             "If you disappeared tomorrow, what would the world actually miss?"),
+]
+
+
+def _get_seed_question(entry_count: int, pillar_states: list[dict]) -> str:
+    if entry_count < len(_SEED_QUESTIONS):
+        return _SEED_QUESTIONS[entry_count][1]
+
+    # After baseline is built, target the most-neglected paused pillar
+    paused = [p for p in pillar_states if p["status"] == "Paused"]
+    if paused:
+        most_neglected = max(paused, key=lambda p: p["days_in_state"])
+        for pillar, question in _SEED_QUESTIONS:
+            if pillar == most_neglected["name"]:
+                return question
+
+    return random.choice(_SEED_QUESTIONS)[1]
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +89,7 @@ class LoginResponse(BaseModel):
 
 class MorningRitualResponse(BaseModel):
     message: str
+    seed_question: str
 
 
 class JournalRequest(BaseModel):
@@ -89,7 +122,7 @@ class HealthResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Dependency
+# Dependencies
 # ---------------------------------------------------------------------------
 
 def get_db():
@@ -145,20 +178,18 @@ async def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 @app.get("/ritual/morning", response_model=MorningRitualResponse, tags=["ritual"])
 async def get_morning_ritual(user: User = Depends(require_user), db: Session = Depends(get_db)):
-    entry = (
-        db.query(JournalEntry)
-        .filter(JournalEntry.user_id == user.id)
-        .order_by(JournalEntry.timestamp.desc())
-        .first()
-    )
+    ctx = build_user_context(user.id, db)
 
-    if not entry:
+    seed_question = _get_seed_question(ctx.entry_count, ctx.pillar_states)
+
+    if not ctx.recent_entries:
         return MorningRitualResponse(
-            message="Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do."
+            message="Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do.",
+            seed_question=seed_question,
         )
 
-    result = pipeline.process_journal(entry.content)
-    return MorningRitualResponse(message=result["message"])
+    result = pipeline.process_journal(ctx.recent_entries[0], ctx)
+    return MorningRitualResponse(message=result["message"], seed_question=seed_question)
 
 
 @app.post("/ritual/evening", response_model=JournalResponse, tags=["ritual"])
@@ -167,8 +198,12 @@ async def submit_evening_journal(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    result = pipeline.process_journal(data.content)
+    # Build context BEFORE adding today's entry so the pipeline sees prior history
+    ctx = build_user_context(user.id, db)
 
+    result = pipeline.process_journal(data.content, ctx)
+
+    # Persist journal entry
     entry = JournalEntry(
         user_id=user.id,
         content=data.content,
@@ -176,6 +211,7 @@ async def submit_evening_journal(
     )
     db.add(entry)
 
+    # Update pillar state
     pillar = (
         db.query(PillarState)
         .filter(PillarState.user_id == user.id, PillarState.pillar_name == result["pillar"])
@@ -186,8 +222,16 @@ async def submit_evening_journal(
         pillar.last_updated = datetime.datetime.utcnow()
 
     db.commit()
-    logger.info("Evening journal processed for user_id=%d, pillar=%s", user.id, result["pillar"])
 
+    # Extract and store new facts (runs after commit so entry is saved)
+    new_facts = pipeline.extract_facts(data.content, ctx.user_facts)
+    if new_facts:
+        for fact in new_facts:
+            db.add(UserFact(user_id=user.id, content=fact))
+        db.commit()
+        logger.info("Stored %d new fact(s) for user_id=%d", len(new_facts), user.id)
+
+    logger.info("Evening journal processed for user_id=%d, pillar=%s", user.id, result["pillar"])
     return JournalResponse(
         status="success",
         pillar_updated=result["pillar"],

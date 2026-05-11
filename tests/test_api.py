@@ -6,7 +6,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./test_architect.db")
 
 import pytest
 from fastapi.testclient import TestClient
-from main import app
+from main import app, _get_seed_question
 
 client = TestClient(app)
 
@@ -40,16 +40,15 @@ def test_login_creates_user():
     res = client.post("/auth/login", json={"email": "new_user@example.com", "name": "Test"})
     assert res.status_code == 200
     data = res.json()
-    assert "token" in data
-    assert "user_id" in data
+    assert "token" in data and "user_id" in data
     assert data["email"] == "new_user@example.com"
 
 
 def test_login_same_email_returns_same_user():
     email = "same_user@example.com"
-    res1 = client.post("/auth/login", json={"email": email, "name": "Test"})
-    res2 = client.post("/auth/login", json={"email": email, "name": "Test"})
-    assert res1.json()["user_id"] == res2.json()["user_id"]
+    r1 = client.post("/auth/login", json={"email": email, "name": "Test"})
+    r2 = client.post("/auth/login", json={"email": email, "name": "Test"})
+    assert r1.json()["user_id"] == r2.json()["user_id"]
 
 
 def test_login_invalid_email_rejected():
@@ -67,29 +66,71 @@ def test_login_missing_email_rejected():
 # ---------------------------------------------------------------------------
 
 def test_morning_ritual_requires_auth():
-    res = client.get("/ritual/morning")
-    assert res.status_code == 401
+    assert client.get("/ritual/morning").status_code == 401
 
 
 def test_evening_journal_requires_auth():
-    res = client.post("/ritual/evening", json={"content": "Test entry"})
-    assert res.status_code == 401
+    assert client.post("/ritual/evening", json={"content": "Test"}).status_code == 401
 
 
 def test_pillars_requires_auth():
-    res = client.get("/user/pillars")
-    assert res.status_code == 401
+    assert client.get("/user/pillars").status_code == 401
 
 
 # ---------------------------------------------------------------------------
 # Morning ritual
 # ---------------------------------------------------------------------------
 
-def test_morning_ritual_day_one_message():
+def test_morning_ritual_returns_message_and_seed_question():
     token, _ = _login("morning_test@example.com")
     res = client.get("/ritual/morning", headers=auth_headers(token))
     assert res.status_code == 200
-    assert "message" in res.json()
+    data = res.json()
+    assert "message" in data
+    assert "seed_question" in data
+    assert isinstance(data["seed_question"], str) and len(data["seed_question"]) > 0
+
+
+def test_morning_ritual_day_one_message():
+    token, _ = _login("day_one@example.com")
+    res = client.get("/ritual/morning", headers=auth_headers(token))
+    assert res.status_code == 200
+    assert "Day 1" in res.json()["message"]
+
+
+# ---------------------------------------------------------------------------
+# Seed question logic
+# ---------------------------------------------------------------------------
+
+_PILLAR_STATES = [
+    {"name": "Social", "status": "Paused", "days_in_state": 5},
+    {"name": "Financial", "status": "Paused", "days_in_state": 14},
+    {"name": "Spiritual", "status": "Moving", "days_in_state": 2},
+    {"name": "Craft/Career", "status": "Paused", "days_in_state": 1},
+    {"name": "Emotional/Intimacy", "status": "Paused", "days_in_state": 1},
+    {"name": "Intellectual", "status": "Paused", "days_in_state": 1},
+    {"name": "Legacy", "status": "Paused", "days_in_state": 1},
+]
+
+
+def test_seed_question_sequential_for_first_seven():
+    from main import _SEED_QUESTIONS
+    for i in range(7):
+        q = _get_seed_question(i, _PILLAR_STATES)
+        assert q == _SEED_QUESTIONS[i][1]
+
+
+def test_seed_question_targets_most_paused_after_seven():
+    # Financial has been Paused 14 days — should be targeted
+    q = _get_seed_question(7, _PILLAR_STATES)
+    from main import _SEED_QUESTIONS
+    financial_q = next(question for pillar, question in _SEED_QUESTIONS if pillar == "Financial")
+    assert q == financial_q
+
+
+def test_seed_question_returns_string():
+    q = _get_seed_question(0, _PILLAR_STATES)
+    assert isinstance(q, str) and len(q) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -110,23 +151,31 @@ def test_submit_journal_success():
     assert data["momentum"] in ("Moving", "Paused")
 
 
+def test_submit_journal_updates_seed_question_progression():
+    """After submitting a journal, the next morning's seed question should advance."""
+    token, _ = _login("seed_progression@example.com")
+    from main import _SEED_QUESTIONS
+
+    morning1 = client.get("/ritual/morning", headers=auth_headers(token)).json()
+    assert morning1["seed_question"] == _SEED_QUESTIONS[0][1]  # session 0 → first question
+
+    client.post("/ritual/evening",
+                json={"content": "I spent time with friends today."},
+                headers=auth_headers(token))
+
+    morning2 = client.get("/ritual/morning", headers=auth_headers(token)).json()
+    assert morning2["seed_question"] == _SEED_QUESTIONS[1][1]  # session 1 → second question
+
+
 def test_submit_empty_journal_rejected():
     token, _ = _login("empty_journal@example.com")
-    res = client.post(
-        "/ritual/evening",
-        json={"content": "   "},
-        headers=auth_headers(token),
-    )
+    res = client.post("/ritual/evening", json={"content": "   "}, headers=auth_headers(token))
     assert res.status_code == 422
 
 
 def test_submit_journal_too_long_rejected():
     token, _ = _login("toolong@example.com")
-    res = client.post(
-        "/ritual/evening",
-        json={"content": "x" * 10_001},
-        headers=auth_headers(token),
-    )
+    res = client.post("/ritual/evening", json={"content": "x" * 10_001}, headers=auth_headers(token))
     assert res.status_code == 422
 
 
@@ -148,5 +197,5 @@ def test_pillars_returns_all_seven():
 def test_pillars_status_values_are_valid():
     token, _ = _login("status_check@example.com")
     res = client.get("/user/pillars", headers=auth_headers(token))
-    for pillar in res.json():
-        assert pillar["status"] in ("Moving", "Paused")
+    for p in res.json():
+        assert p["status"] in ("Moving", "Paused")
