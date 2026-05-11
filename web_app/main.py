@@ -146,6 +146,7 @@ class MiddayResponse(BaseModel):
 
 class MorningRitualResponse(BaseModel):
     message: str
+    directive: str
     seed_question: str
     streak: int
     total_entries: int
@@ -321,6 +322,7 @@ async def get_morning_ritual(user: User = Depends(require_user), db: Session = D
     if not ctx.recent_entries:
         return MorningRitualResponse(
             message="Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do.",
+            directive="Write your first journal entry tonight — that is the only task that matters today.",
             seed_question=seed_question,
             streak=streak,
             total_entries=ctx.entry_count,
@@ -329,6 +331,7 @@ async def get_morning_ritual(user: User = Depends(require_user), db: Session = D
     result = pipeline.process_journal(ctx.recent_entries[0], ctx)
     return MorningRitualResponse(
         message=result["message"],
+        directive=result["directive"],
         seed_question=seed_question,
         streak=streak,
         total_entries=ctx.entry_count,

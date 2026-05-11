@@ -5,8 +5,9 @@ import urllib.request
 import urllib.error
 from config import GEMINI_API_KEY
 from prompts import (
-    PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT,
-    AUDITOR_PROMPT, EXTRACTOR_PROMPT, WEEKLY_REVIEW_PROMPT, MONTHLY_REVIEW_PROMPT,
+    PROFILER_PROMPT, PATTERN_TRACKER_PROMPT, STRATEGIST_PROMPT,
+    STORYTELLER_PROMPT, MENTOR_PROMPT, AUDITOR_PROMPT,
+    EXTRACTOR_PROMPT, WEEKLY_REVIEW_PROMPT, MONTHLY_REVIEW_PROMPT,
 )
 from context import UserContext
 
@@ -34,6 +35,16 @@ _PILLAR_KEYWORDS: dict[str, list[str]] = {
 _PILLAR_PATTERNS: dict[str, re.Pattern] = {
     pillar: re.compile(r'\b(' + '|'.join(re.escape(k) for k in keywords) + r')\b')
     for pillar, keywords in _PILLAR_KEYWORDS.items()
+}
+
+_MENTOR_DIRECTIVES: dict[str, str] = {
+    "Financial":          "Open your banking app right now and move whatever you can — even a small amount — into savings before you close this.",
+    "Social":             "Text one person you have been meaning to reach out to before you put your phone down.",
+    "Spiritual":          "Before you sleep tonight, sit in silence for five minutes — no phone, no music, nothing.",
+    "Craft/Career":       "Block two uninterrupted hours in your calendar this week for deep work on your craft and protect them like a non-negotiable appointment.",
+    "Emotional/Intimacy": "Have one real conversation today — not small talk, not logistics, something that actually matters to both of you.",
+    "Intellectual":       "Pick up the book or article you have been meaning to read and commit to 20 pages before tonight.",
+    "Legacy":             "Write down one action you could take this week that will still matter in ten years.",
 }
 
 _STORIES: dict[str, str] = {
@@ -67,6 +78,17 @@ def _mock_llm(system_prompt: str, user_input: str) -> str:
     first_line = system_prompt.strip().splitlines()[0] if system_prompt else ""
     journal = _extract_journal_section(user_input)
     try:
+        if "Pattern Tracker" in first_line:
+            try:
+                data = json.loads(user_input.split("\n")[1]) if user_input.strip().startswith("===") else json.loads(user_input)
+            except Exception:
+                data = {}
+            pillar = data.get("pillar", "Social")
+            return json.dumps({
+                "trend": f"{pillar} has been the recurring theme across recent entries.",
+                "neglected_pillar": "Spiritual",
+                "repeat_theme": f"Avoidance of taking concrete action on {pillar.lower()} rather than just reflecting on it.",
+            })
         if "Profiler" in first_line:
             pillar = _detect_pillar(journal)
             state = "negative" if pillar in ("Financial", "Spiritual", "Emotional/Intimacy") else "neutral"
@@ -91,6 +113,14 @@ def _mock_llm(system_prompt: str, user_input: str) -> str:
                 strategy = {}
             pillar = strategy.get("priority_pillar", "Social")
             return _STORIES.get(pillar, "The greatest battles are won before they are fought — through discipline and resolve.")
+        if "Mentor" in first_line:
+            try:
+                lines = [l for l in user_input.splitlines() if l.strip().startswith("{")]
+                data = json.loads(lines[0]) if lines else {}
+            except Exception:
+                data = {}
+            pillar = data.get("priority_pillar", "Social")
+            return _MENTOR_DIRECTIVES.get(pillar, "Do the one thing you have been putting off — today, not tomorrow.")
         if "Auditor" in first_line:
             return f"Listen. {user_input} Stop worrying about the noise and focus on the work. That's how you win."
         if "Memory Keeper" in first_line:
@@ -167,8 +197,23 @@ def _profiler_input(journal_text: str, ctx: UserContext | None) -> str:
     return f"{ctx.format()}\n\n=== TODAY'S JOURNAL ENTRY ===\n{journal_text}"
 
 
-def _strategist_input(profile: dict, ctx: UserContext | None) -> str:
+def _pattern_tracker_input(profile: dict, ctx: UserContext | None) -> str:
+    lines = [f"=== TODAY'S PROFILE ===\n{json.dumps(profile)}"]
+    if ctx and ctx.pillar_states:
+        lines.append("\n=== PILLAR STATES ===")
+        for p in sorted(ctx.pillar_states, key=lambda x: x["days_in_state"], reverse=True):
+            lines.append(f"- {p['name']}: {p['status']} for {p['days_in_state']} days")
+    if ctx and ctx.recent_entries:
+        lines.append("\n=== RECENT ENTRIES ===")
+        for i, entry in enumerate(ctx.recent_entries[:3]):
+            lines.append(f"Entry {i + 1}: {entry[:300]}")
+    return "\n".join(lines)
+
+
+def _strategist_input(profile: dict, ctx: UserContext | None, trends: dict | None = None) -> str:
     base = f"=== PROFILE FROM TODAY'S ENTRY ===\n{json.dumps(profile)}"
+    if trends:
+        base += f"\n\n=== PATTERN ANALYSIS ===\n{json.dumps(trends)}"
     if not ctx or not ctx.pillar_states:
         return base
     trend_lines = ["", "=== PILLAR TREND DATA ==="]
@@ -179,6 +224,18 @@ def _strategist_input(profile: dict, ctx: UserContext | None) -> str:
         for f in ctx.user_facts:
             trend_lines.append(f"- {f}")
     return base + "\n".join(trend_lines)
+
+
+def _mentor_input(strategy: dict, story: str, ctx: UserContext | None) -> str:
+    lines = [
+        f"=== STRATEGIC PRIORITY ===\n{json.dumps(strategy)}",
+        f"\n=== TODAY'S HERO STORY ===\n{story}",
+    ]
+    if ctx and ctx.user_facts:
+        lines.append("\n=== WHO THIS PERSON IS ===")
+        for f in ctx.user_facts:
+            lines.append(f"- {f}")
+    return "\n".join(lines)
 
 
 def _storyteller_input(strategy: dict, ctx: UserContext | None) -> str:
@@ -250,6 +307,7 @@ class ArchitectPipeline:
     def process_journal(self, journal_text: str, ctx: UserContext | None = None) -> dict:
         logger.info("Processing journal (length=%d, has_context=%s)", len(journal_text), ctx is not None)
 
+        # Stage 1: Profiler — what is this entry about?
         try:
             profile_json = call_llm(PROFILER_PROMPT, _profiler_input(journal_text, ctx), json_mode=True)
             profile = json.loads(profile_json)
@@ -257,27 +315,46 @@ class ArchitectPipeline:
             logger.error("Profiler failed: %s", e)
             profile = {"pillar": "Social", "state": "neutral", "core_issue": "General reflection"}
 
+        # Stage 2: Pattern Tracker — what trends are forming across entries?
         try:
-            strategy_json = call_llm(STRATEGIST_PROMPT, _strategist_input(profile, ctx), json_mode=True)
+            trends_json = call_llm(PATTERN_TRACKER_PROMPT, _pattern_tracker_input(profile, ctx), json_mode=True)
+            trends = json.loads(trends_json)
+        except Exception as e:
+            logger.error("Pattern Tracker failed: %s", e)
+            trends = None
+
+        # Stage 3: Strategist — what should tomorrow focus on?
+        try:
+            strategy_json = call_llm(STRATEGIST_PROMPT, _strategist_input(profile, ctx, trends), json_mode=True)
             strategy = json.loads(strategy_json)
         except Exception as e:
             logger.error("Strategist failed: %s", e)
             strategy = {"priority_pillar": profile.get("pillar", "Social"), "momentum": "Paused"}
 
+        # Stage 4: Storyteller — write the morning hero story
         try:
             story = call_llm(STORYTELLER_PROMPT, _storyteller_input(strategy, ctx))
         except Exception as e:
             logger.error("Storyteller failed: %s", e)
             story = "Discipline is the bridge between goals and accomplishment."
 
+        # Stage 5: Auditor — sharpen the tone
         try:
             final_message = call_llm(AUDITOR_PROMPT, story)
         except Exception as e:
             logger.error("Auditor failed: %s", e)
             final_message = story
 
+        # Stage 6: Mentor — one direct instruction
+        try:
+            directive = call_llm(MENTOR_PROMPT, _mentor_input(strategy, final_message, ctx))
+        except Exception as e:
+            logger.error("Mentor failed: %s", e)
+            directive = "Do the one thing you have been putting off — today, not tomorrow."
+
         return {
             "message": final_message,
+            "directive": directive.strip(),
             "pillar": profile.get("pillar", "Social"),
             "momentum": strategy.get("momentum", "Paused"),
         }

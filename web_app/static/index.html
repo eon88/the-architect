@@ -84,6 +84,7 @@
         <div id="morning-view" class="hidden">
             <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Morning Ritual</span>
             <h2 id="morning-message" class="text-3xl font-medium leading-relaxed mb-6 italic">"Loading your story..."</h2>
+            <p id="morning-directive" class="hidden text-base font-semibold text-white mb-8 px-4 py-3 border border-gray-700 rounded-xl"></p>
             <div id="morning-stats" class="hidden flex justify-center gap-6 mb-10">
                 <span id="stat-streak" class="text-xs uppercase tracking-widest text-gray-500"></span>
                 <span class="text-xs text-gray-700">·</span>
@@ -326,6 +327,14 @@
                 const data = await apiFetch('/ritual/morning');
                 msgEl.textContent = `"${data.message}"`;
                 currentSeedQuestion = data.seed_question || '';
+
+                const directiveEl = document.getElementById('morning-directive');
+                if (data.directive) {
+                    directiveEl.textContent = data.directive;
+                    directiveEl.classList.remove('hidden');
+                } else {
+                    directiveEl.classList.add('hidden');
+                }
 
                 const statsEl = document.getElementById('morning-stats');
                 if (data.total_entries > 0) {

@@ -5,7 +5,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'web_app'))
 import json
 import pytest
 from pipeline import ArchitectPipeline, call_llm, _detect_pillar, _extract_journal_section
-from prompts import PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT, AUDITOR_PROMPT, EXTRACTOR_PROMPT
+from prompts import (PROFILER_PROMPT, PATTERN_TRACKER_PROMPT, STRATEGIST_PROMPT,
+                     STORYTELLER_PROMPT, MENTOR_PROMPT, AUDITOR_PROMPT, EXTRACTOR_PROMPT)
 from context import UserContext
 
 
@@ -92,6 +93,38 @@ def test_context_format_no_facts_shows_placeholder():
 # call_llm — mock (no API key set in test env)
 # ---------------------------------------------------------------------------
 
+def test_call_llm_pattern_tracker_returns_valid_json():
+    profile = json.dumps({"pillar": "Financial", "state": "negative", "core_issue": "Debt"})
+    result = call_llm(PATTERN_TRACKER_PROMPT, profile, json_mode=True)
+    parsed = json.loads(result)
+    assert "trend" in parsed
+    assert "neglected_pillar" in parsed
+    assert "repeat_theme" in parsed
+
+
+def test_call_llm_pattern_tracker_returns_strings():
+    profile = json.dumps({"pillar": "Social", "state": "neutral", "core_issue": "Isolation"})
+    result = call_llm(PATTERN_TRACKER_PROMPT, profile, json_mode=True)
+    parsed = json.loads(result)
+    for key in ("trend", "neglected_pillar", "repeat_theme"):
+        assert isinstance(parsed[key], str) and len(parsed[key]) > 0
+
+
+def test_call_llm_mentor_returns_string():
+    strategy = json.dumps({"priority_pillar": "Financial", "momentum": "Paused"})
+    result = call_llm(MENTOR_PROMPT, strategy)
+    assert isinstance(result, str) and len(result) > 10
+
+
+def test_call_llm_mentor_covers_all_pillars():
+    pillars = ["Financial", "Spiritual", "Craft/Career", "Emotional/Intimacy",
+               "Intellectual", "Legacy", "Social"]
+    for pillar in pillars:
+        strategy = json.dumps({"priority_pillar": pillar, "momentum": "Paused"})
+        result = call_llm(MENTOR_PROMPT, strategy)
+        assert isinstance(result, str) and len(result) > 5, f"No directive for pillar: {pillar}"
+
+
 def test_call_llm_profiler_returns_valid_json():
     result = call_llm(PROFILER_PROMPT, "I'm drowning in debt", json_mode=True)
     parsed = json.loads(result)
@@ -160,6 +193,7 @@ def test_process_journal_returns_required_keys():
     p = ArchitectPipeline()
     result = p.process_journal("I'm struggling with money")
     assert "message" in result and "pillar" in result and "momentum" in result
+    assert "directive" in result and isinstance(result["directive"], str) and len(result["directive"]) > 0
 
 
 def test_process_journal_with_context():

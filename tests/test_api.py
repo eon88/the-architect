@@ -170,6 +170,7 @@ def test_morning_ritual_returns_message_and_seed_question():
     assert res.status_code == 200
     data = res.json()
     assert "message" in data
+    assert "directive" in data and isinstance(data["directive"], str) and len(data["directive"]) > 0
     assert "seed_question" in data
     assert isinstance(data["seed_question"], str) and len(data["seed_question"]) > 0
     assert "streak" in data and isinstance(data["streak"], int)
