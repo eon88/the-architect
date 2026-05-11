@@ -30,9 +30,45 @@
             border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Matrix boot sequence */
+        #screen-boot {
+            position: fixed; inset: 0; background: #000;
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 2rem; z-index: 200;
+        }
+        #screen-boot.fade-out { animation: fadeOut 0.8s ease forwards; }
+        @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+
+        .matrix-line {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+            color: #00ff41;
+            text-shadow: 0 0 8px rgba(0,255,65,0.6);
+            line-height: 1.8;
+            white-space: pre;
+            min-height: 1.8em;
+        }
+        .matrix-dim { color: #005c18; text-shadow: none; }
+        .matrix-cursor::after { content: '█'; animation: blink 0.6s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        #boot-skip {
+            position: fixed; bottom: 1.5rem; right: 2rem;
+            font-family: 'Courier New', monospace; font-size: 0.7rem;
+            color: #005c18; cursor: pointer; letter-spacing: 0.1em;
+            transition: color 0.2s;
+        }
+        #boot-skip:hover { color: #00ff41; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- MATRIX BOOT SCREEN -->
+    <div id="screen-boot">
+        <div id="boot-lines" style="max-width:600px;width:100%;margin:0 auto;"></div>
+    </div>
+    <span id="boot-skip" onclick="skipBoot()">[ SKIP ]</span>
 
     <!-- TOAST -->
     <div id="toast"></div>
@@ -724,14 +760,101 @@
         }
 
         // ---------------------------------------------------------------------------
-        // Boot: resume session if token exists
+        // Matrix boot sequence
+        // ---------------------------------------------------------------------------
+        const _sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        async function typeLine(el, text, speed = 18) {
+            el.classList.add('matrix-cursor');
+            for (const ch of text) {
+                el.textContent += ch;
+                await _sleep(speed + Math.random() * 10);
+            }
+            el.classList.remove('matrix-cursor');
+        }
+
+        async function typeBar(container, label) {
+            const p = document.createElement('p');
+            p.className = 'matrix-line';
+            container.appendChild(p);
+            const pad = label.padEnd(18);
+            const total = 20;
+            p.textContent = `  ${pad}[                    ]   0%`;
+            for (let i = 1; i <= total; i++) {
+                await _sleep(28);
+                const filled = '█'.repeat(i) + ' '.repeat(total - i);
+                const pct = String(Math.round((i / total) * 100)).padStart(3);
+                p.textContent = `  ${pad}[${filled}] ${pct}%`;
+            }
+            p.classList.add('matrix-dim');
+            p.textContent = `  ${pad}[████████████████████] OK `;
+        }
+
+        async function runBootSequence() {
+            const container = document.getElementById('boot-lines');
+            container.innerHTML = '';
+
+            const addLine = (text = '', dim = false) => {
+                const p = document.createElement('p');
+                p.className = 'matrix-line' + (dim ? ' matrix-dim' : '');
+                p.textContent = text;
+                container.appendChild(p);
+                return p;
+            };
+
+            const type = async (text, speed) => {
+                const p = document.createElement('p');
+                p.className = 'matrix-line';
+                container.appendChild(p);
+                await typeLine(p, text, speed);
+            };
+
+            await type('> INITIALIZING THE ARCHITECT...', 22);
+            await _sleep(180);
+            addLine();
+            await type('> SCANNING LIFE DIMENSIONS...', 22);
+            await _sleep(120);
+            addLine();
+
+            const pillars = ['SOCIAL','FINANCIAL','SPIRITUAL','CRAFT/CAREER','EMOTIONAL','INTELLECTUAL','LEGACY'];
+            for (const p of pillars) await typeBar(container, p);
+
+            await _sleep(200);
+            addLine();
+            await type('> ALL SYSTEMS ONLINE.', 22);
+            await _sleep(120);
+            await type('> IDENTITY REQUIRED TO PROCEED.', 22);
+            await _sleep(500);
+
+            finishBoot();
+        }
+
+        function finishBoot() {
+            const boot = document.getElementById('screen-boot');
+            const skip = document.getElementById('boot-skip');
+            boot.classList.add('fade-out');
+            skip.style.display = 'none';
+            setTimeout(() => {
+                boot.style.display = 'none';
+                if (authToken) {
+                    showRitual();
+                } else {
+                    showLoginScreen();
+                }
+            }, 800);
+        }
+
+        function skipBoot() {
+            // Cancel animation by replacing container, then finish
+            document.getElementById('boot-lines').innerHTML = '';
+            finishBoot();
+        }
+
+        // ---------------------------------------------------------------------------
+        // Boot: run matrix sequence first (skip if already logged in and on mobile)
         // ---------------------------------------------------------------------------
         (function boot() {
-            if (authToken) {
-                showRitual();
-            } else {
-                showLoginScreen();
-            }
+            runBootSequence();
         })();
     </script>
 </body>
