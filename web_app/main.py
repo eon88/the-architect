@@ -528,6 +528,11 @@ async def get_milestones(user: User = Depends(require_user), db: Session = Depen
 @app.get("/user/pillars", response_model=list[PillarResponse], tags=["user"])
 async def get_pillars(user: User = Depends(require_user), db: Session = Depends(get_db)):
     pillars = db.query(PillarState).filter(PillarState.user_id == user.id).all()
+    if not pillars:
+        for pillar in PILLARS:
+            db.add(PillarState(user_id=user.id, pillar_name=pillar, status="Paused"))
+        db.commit()
+        pillars = db.query(PillarState).filter(PillarState.user_id == user.id).all()
     now = datetime.datetime.utcnow()
     return [
         PillarResponse(
