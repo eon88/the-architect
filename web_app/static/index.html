@@ -53,13 +53,6 @@
         .matrix-cursor::after { content: '█'; animation: blink 0.6s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
 
-        #boot-skip {
-            position: fixed; bottom: 1.5rem; right: 2rem;
-            font-family: 'Courier New', monospace; font-size: 0.7rem;
-            color: #005c18; cursor: pointer; letter-spacing: 0.1em;
-            transition: color 0.2s;
-        }
-        #boot-skip:hover { color: #00ff41; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -68,8 +61,6 @@
     <div id="screen-boot">
         <div id="boot-lines" style="max-width:600px;width:100%;margin:0 auto;"></div>
     </div>
-    <span id="boot-skip" onclick="skipBoot()">[ SKIP ]</span>
-
     <!-- TOAST -->
     <div id="toast"></div>
 
@@ -83,8 +74,11 @@
             placeholder="Your email address"
             class="w-full py-4 px-6 mb-4 bg-transparent border-2 border-gray-800 rounded-full focus:border-white outline-none transition text-center text-lg"
         />
-        <button id="login-btn" onclick="login()" class="w-full py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300 text-lg">
-            Begin Journey
+        <button id="login-btn" onclick="login()" class="w-full py-4 bg-red-600 text-white font-bold rounded-full hover:bg-red-500 transition duration-300 text-lg">
+            Take the red pill
+        </button>
+        <button onclick="window.close()" class="w-full mt-4 py-3 text-blue-500 hover:text-blue-400 transition text-sm font-medium">
+            blue pill
         </button>
     </div>
 
@@ -842,12 +836,6 @@
                     showLoginScreen();
                 }
             }, 800);
-        }
-
-        function skipBoot() {
-            // Cancel animation by replacing container, then finish
-            document.getElementById('boot-lines').innerHTML = '';
-            finishBoot();
         }
 
         // ---------------------------------------------------------------------------
