@@ -149,6 +149,32 @@
             text-shadow: 0 0 8px rgba(0,255,65,0.12);
             letter-spacing: 0.02em;
         }
+        .morning-quote {
+            font-family: Verdana, Geneva, sans-serif;
+            font-weight: normal;
+            font-size: clamp(1.1rem, 3vw, 1.5rem);
+            line-height: 1.8;
+            color: var(--green);
+            padding: 0.5rem 0 0.75rem;
+        }
+        .morning-quote::before { content: '\201C'; }
+        .morning-quote::after  { content: '\201D'; }
+        .morning-quote-attr {
+            font-size: 0.62rem;
+            letter-spacing: 0.2em;
+            color: var(--text-dim);
+            text-align: right;
+            text-transform: uppercase;
+        }
+        .morning-quote-attr::before { content: '\2014  '; }
+        .morning-loading-tag {
+            font-size: 0.55rem;
+            letter-spacing: 0.15em;
+            color: var(--text-dim);
+            text-align: right;
+            margin-top: 1.25rem;
+            animation: blink 1.2s step-end infinite;
+        }
         #morning-directive {
             font-size: 0.9rem; line-height: 1.6;
             border-left: 2px solid var(--green-dim);
@@ -427,9 +453,21 @@
     <div id="morning-view" class="hidden">
         <div class="sys-label">// MORNING PROTOCOL</div>
         <hr class="divider">
-        <h2 id="morning-message">"LOADING YOUR STORY..."</h2>
-        <p id="morning-directive" class="hidden"></p>
-        <div id="morning-stats" class="hidden"></div>
+
+        <!-- Loading state: inspirational quote -->
+        <div id="morning-loading-state">
+            <p id="loading-quote-text" class="morning-quote"></p>
+            <p id="loading-quote-attr" class="morning-quote-attr"></p>
+            <p class="morning-loading-tag">// LOADING YOUR STORY...</p>
+        </div>
+
+        <!-- Loaded state: AI story -->
+        <div id="morning-loaded-state" class="hidden">
+            <h2 id="morning-message"></h2>
+            <p id="morning-directive" class="hidden"></p>
+            <div id="morning-stats" class="hidden"></div>
+        </div>
+
         <div class="nav-bar">
             <button onclick="showMidday()" class="btn-ghost">MIDDAY</button>
             <button onclick="showEvening()" class="btn-ghost">EVENING</button>
@@ -707,20 +745,46 @@ function hideAll() {
         .forEach(id => document.getElementById(id).classList.add('hidden'));
 }
 
+const MORNING_QUOTES = [
+    { text: "The impediment to action advances action. What stands in the way becomes the way.", author: "Marcus Aurelius" },
+    { text: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", author: "Aristotle" },
+    { text: "He who has a why to live can bear almost any how.", author: "Friedrich Nietzsche" },
+    { text: "The cave you fear to enter holds the treasure you seek.", author: "Joseph Campbell" },
+    { text: "Do not pray for an easy life. Pray for the strength to endure a difficult one.", author: "Bruce Lee" },
+    { text: "Waste no more time arguing about what a good man should be. Be one.", author: "Marcus Aurelius" },
+    { text: "First say to yourself what you would be, and then do what you have to do.", author: "Epictetus" },
+    { text: "It is not death that a man should fear, but he should fear never beginning to live.", author: "Marcus Aurelius" },
+    { text: "You do not rise to the level of your goals. You fall to the level of your systems.", author: "James Clear" },
+    { text: "The successful warrior is the average man with laser-like focus.", author: "Bruce Lee" },
+    { text: "A ship in harbor is safe, but that is not what ships are for.", author: "John A. Shedd" },
+    { text: "Knowing is not enough; we must apply. Willing is not enough; we must do.", author: "Goethe" },
+    { text: "Make the most of yourself, for that is all there is of you.", author: "Ralph Waldo Emerson" },
+    { text: "What you are afraid to do is a clear indicator of the next thing you need to do.", author: "Ralph Waldo Emerson" },
+    { text: "The quality of a man's life is in direct proportion to his commitment to excellence.", author: "Vince Lombardi" },
+];
+
 let currentSeedQuestion = '';
 
 async function showRitual() {
     if (!authToken) { showLoginScreen(); return; }
     hideAll();
     document.getElementById('screen-ritual').classList.remove('hidden');
-
-    const msgEl = document.getElementById('morning-message');
-    msgEl.textContent = '"LOADING YOUR STORY..."';
     document.getElementById('morning-view').classList.remove('hidden');
+
+    // Show a random quote while the story loads
+    const q = MORNING_QUOTES[Math.floor(Math.random() * MORNING_QUOTES.length)];
+    document.getElementById('loading-quote-text').textContent = q.text;
+    document.getElementById('loading-quote-attr').textContent = q.author;
+    document.getElementById('morning-loading-state').classList.remove('hidden');
+    document.getElementById('morning-loaded-state').classList.add('hidden');
 
     try {
         const data = await apiFetch('/ritual/morning');
-        msgEl.textContent = `"${data.message}"`;
+
+        document.getElementById('morning-loading-state').classList.add('hidden');
+        document.getElementById('morning-loaded-state').classList.remove('hidden');
+
+        document.getElementById('morning-message').textContent = `"${data.message}"`;
         currentSeedQuestion = data.seed_question || '';
 
         const directiveEl = document.getElementById('morning-directive');
@@ -742,7 +806,9 @@ async function showRitual() {
             statsEl.classList.add('hidden');
         }
     } catch (e) {
-        msgEl.textContent = 'COULD NOT LOAD RITUAL. TRY AGAIN SHORTLY.';
+        document.getElementById('morning-loading-state').classList.add('hidden');
+        document.getElementById('morning-loaded-state').classList.remove('hidden');
+        document.getElementById('morning-message').textContent = 'COULD NOT LOAD RITUAL. TRY AGAIN SHORTLY.';
         showToast(e.message, true);
     }
 }
