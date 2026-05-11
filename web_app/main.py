@@ -187,6 +187,18 @@ class MonthlyReviewResponse(BaseModel):
     entries_this_month: int
 
 
+class MilestoneEntry(BaseModel):
+    date: str
+    momentum: str
+
+
+class PillarMilestone(BaseModel):
+    name: str
+    status: str
+    days_in_state: int
+    entries: list[MilestoneEntry]
+
+
 class FactResponse(BaseModel):
     id: int
     content: str
@@ -346,6 +358,7 @@ async def submit_evening_journal(
         user_id=user.id,
         content=data.content,
         pillar_associated=result["pillar"],
+        momentum=result["momentum"],
     )
     db.add(entry)
 
@@ -469,6 +482,44 @@ async def delete_user_fact(
     db.delete(fact)
     db.commit()
     return {"status": "deleted"}
+
+
+@app.get("/user/milestones", response_model=list[PillarMilestone], tags=["user"])
+async def get_milestones(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    since = datetime.datetime.utcnow() - datetime.timedelta(days=28)
+    entries = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.user_id == user.id, JournalEntry.timestamp >= since)
+        .order_by(JournalEntry.timestamp.asc())
+        .all()
+    )
+
+    # Build per-pillar entry map: pillar -> {date_str -> momentum}
+    pillar_days: dict[str, dict[str, str]] = {p: {} for p in PILLARS}
+    for e in entries:
+        if e.pillar_associated and e.pillar_associated in pillar_days:
+            date_str = e.timestamp.strftime("%Y-%m-%d")
+            pillar_days[e.pillar_associated][date_str] = e.momentum or "Paused"
+
+    now = datetime.datetime.utcnow()
+    pillar_states = db.query(PillarState).filter(PillarState.user_id == user.id).all()
+    state_map = {p.pillar_name: p for p in pillar_states}
+
+    result = []
+    for pillar in PILLARS:
+        ps = state_map.get(pillar)
+        days_in_state = max(0, (now - ps.last_updated).days) if ps else 0
+        history = [
+            MilestoneEntry(date=d, momentum=m)
+            for d, m in sorted(pillar_days[pillar].items())
+        ]
+        result.append(PillarMilestone(
+            name=pillar,
+            status=ps.status if ps else "Paused",
+            days_in_state=days_in_state,
+            entries=history,
+        ))
+    return result
 
 
 @app.get("/user/pillars", response_model=list[PillarResponse], tags=["user"])

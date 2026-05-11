@@ -95,6 +95,7 @@
                 <button onclick="showMap()" class="text-sm text-gray-500 underline hover:text-white transition">Pillar Map</button>
                 <button onclick="showWeeklyReview()" class="text-sm text-gray-500 underline hover:text-white transition">Weekly Review</button>
                 <button onclick="showMonthlyReview()" class="text-sm text-gray-500 underline hover:text-white transition">30-Day Vision</button>
+                <button onclick="showMilestones()" class="text-sm text-gray-500 underline hover:text-white transition">Milestone Map</button>
                 <button onclick="showFacts()" class="text-sm text-gray-500 underline hover:text-white transition">What I Know</button>
             </div>
         </div>
@@ -182,6 +183,21 @@
             </div>
             <p id="monthly-meta" class="text-xs text-gray-600 text-center"></p>
         </div>
+    </div>
+
+    <!-- MILESTONES SCREEN -->
+    <div id="screen-milestones" class="hidden w-full max-w-3xl">
+        <div class="flex justify-between items-end mb-4">
+            <div>
+                <span class="text-xs uppercase tracking-widest text-gray-500 block mb-1">Manager Hat</span>
+                <h2 class="text-4xl font-black tracking-tighter">MILESTONE MAP</h2>
+            </div>
+            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back</button>
+        </div>
+        <p class="text-gray-600 text-sm mb-10">28-day activity. Green = Moving. Red = Paused. Dark = no entry.</p>
+
+        <div id="milestones-loading" class="text-center py-20 text-gray-500">Loading...</div>
+        <div id="milestones-grid" class="hidden space-y-4"></div>
     </div>
 
     <!-- FACTS SCREEN -->
@@ -291,7 +307,7 @@
         // Screens
         // ---------------------------------------------------------------------------
         function hideAll() {
-            ['screen-login','screen-onboard','screen-midday','screen-ritual','screen-map','screen-review','screen-monthly','screen-facts','morning-view','evening-view']
+            ['screen-login','screen-onboard','screen-midday','screen-ritual','screen-map','screen-review','screen-monthly','screen-milestones','screen-facts','morning-view','evening-view']
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
@@ -548,6 +564,80 @@
 
                 document.getElementById('monthly-loading').classList.add('hidden');
                 document.getElementById('monthly-content').classList.remove('hidden');
+            } catch (e) {
+                showToast(e.message, true);
+                showRitual();
+            }
+        }
+
+        async function showMilestones() {
+            if (!authToken) { showLoginScreen(); return; }
+            hideAll();
+            document.getElementById('screen-milestones').classList.remove('hidden');
+            document.getElementById('milestones-loading').classList.remove('hidden');
+            document.getElementById('milestones-grid').classList.add('hidden');
+
+            try {
+                const pillars = await apiFetch('/user/milestones');
+
+                // Build 28-day date array (oldest → newest)
+                const dates = [];
+                for (let i = 27; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    dates.push(d.toISOString().slice(0, 10));
+                }
+
+                const grid = document.getElementById('milestones-grid');
+                grid.textContent = '';
+
+                pillars.forEach(p => {
+                    const entryMap = {};
+                    p.entries.forEach(e => { entryMap[e.date] = e.momentum; });
+
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center gap-3';
+
+                    const label = document.createElement('div');
+                    label.className = 'w-36 shrink-0';
+
+                    const name = document.createElement('p');
+                    name.className = 'text-sm font-semibold text-gray-300 truncate';
+                    name.textContent = p.name;
+
+                    const badge = document.createElement('p');
+                    const isMoving = p.status === 'Moving';
+                    badge.className = `text-xs ${isMoving ? 'text-green-500' : 'text-gray-600'}`;
+                    badge.textContent = `${p.status} · ${p.days_in_state}d`;
+
+                    label.appendChild(name);
+                    label.appendChild(badge);
+
+                    const dotsWrap = document.createElement('div');
+                    dotsWrap.className = 'flex gap-1 flex-wrap';
+
+                    dates.forEach(date => {
+                        const dot = document.createElement('div');
+                        dot.style.cssText = 'width:10px;height:10px;border-radius:2px;flex-shrink:0;';
+                        const momentum = entryMap[date];
+                        if (!momentum) {
+                            dot.style.background = '#1a1a1a';
+                        } else if (momentum === 'Moving') {
+                            dot.style.background = '#22c55e';
+                        } else {
+                            dot.style.background = '#ef4444';
+                        }
+                        dot.title = momentum ? `${date}: ${momentum}` : date;
+                        dotsWrap.appendChild(dot);
+                    });
+
+                    row.appendChild(label);
+                    row.appendChild(dotsWrap);
+                    grid.appendChild(row);
+                });
+
+                document.getElementById('milestones-loading').classList.add('hidden');
+                grid.classList.remove('hidden');
             } catch (e) {
                 showToast(e.message, true);
                 showRitual();

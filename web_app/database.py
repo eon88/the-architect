@@ -1,7 +1,7 @@
 import logging
 import time
 import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime, Boolean, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from config import DATABASE_URL
@@ -73,6 +73,7 @@ class JournalEntry(Base):
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     pillar_associated = Column(String(50), nullable=True)
+    momentum = Column(String(20), nullable=True)
 
 
 class UserFact(Base):
@@ -84,3 +85,22 @@ class UserFact(Base):
 
 
 Base.metadata.create_all(bind=engine)
+
+
+def _ensure_schema():
+    """Add columns introduced after initial deploy without requiring Alembic."""
+    migrations = [
+        "ALTER TABLE journal_entries ADD COLUMN momentum VARCHAR(20)",
+        "ALTER TABLE users ADD COLUMN has_onboarded BOOLEAN NOT NULL DEFAULT FALSE",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.info("Migration applied: %s", sql)
+            except Exception:
+                pass  # column already exists
+
+
+_ensure_schema()

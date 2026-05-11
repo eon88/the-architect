@@ -386,6 +386,68 @@ def test_monthly_review_response_fields_are_strings():
 
 
 # ---------------------------------------------------------------------------
+# Milestones
+# ---------------------------------------------------------------------------
+
+def test_milestones_requires_auth():
+    assert client.get("/user/milestones").status_code == 401
+
+
+def test_milestones_returns_all_seven_pillars():
+    token, _ = _login("milestones_basic@example.com")
+    res = client.get("/user/milestones", headers=auth_headers(token))
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 7
+    names = {p["name"] for p in data}
+    assert names == {"Social", "Financial", "Spiritual", "Craft/Career",
+                     "Emotional/Intimacy", "Intellectual", "Legacy"}
+
+
+def test_milestones_empty_entries_for_new_user():
+    token, _ = _login("milestones_empty@example.com")
+    data = client.get("/user/milestones", headers=auth_headers(token)).json()
+    for p in data:
+        assert p["entries"] == []
+
+
+def test_milestones_entries_appear_after_journal():
+    token, _ = _login("milestones_entries@example.com")
+    client.post("/ritual/evening",
+                json={"content": "I've been grinding on my craft all week."},
+                headers=auth_headers(token))
+    data = client.get("/user/milestones", headers=auth_headers(token)).json()
+    # At least one pillar should have an entry
+    total_entries = sum(len(p["entries"]) for p in data)
+    assert total_entries >= 1
+
+
+def test_milestones_entry_has_required_fields():
+    token, _ = _login("milestones_fields@example.com")
+    client.post("/ritual/evening",
+                json={"content": "Deep financial reflection today."},
+                headers=auth_headers(token))
+    data = client.get("/user/milestones", headers=auth_headers(token)).json()
+    for p in data:
+        for entry in p["entries"]:
+            assert "date" in entry and "momentum" in entry
+            assert entry["momentum"] in ("Moving", "Paused")
+
+
+def test_milestones_momentum_recorded_on_journal():
+    token, _ = _login("milestones_momentum@example.com")
+    res = client.post("/ritual/evening",
+                      json={"content": "I'm drowning in debt and can't see a way out."},
+                      headers=auth_headers(token))
+    assert res.status_code == 200
+    momentum = res.json()["momentum"]
+
+    data = client.get("/user/milestones", headers=auth_headers(token)).json()
+    all_entries = [e for p in data for e in p["entries"]]
+    assert any(e["momentum"] == momentum for e in all_entries)
+
+
+# ---------------------------------------------------------------------------
 # User facts
 # ---------------------------------------------------------------------------
 
