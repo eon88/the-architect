@@ -135,6 +135,14 @@ class WeeklyReviewResponse(BaseModel):
     entries_this_week: int
 
 
+class MonthlyReviewResponse(BaseModel):
+    pillars_moved: list[str]
+    pillars_neglected: list[str]
+    blind_spot: str
+    architectural_decision: str
+    entries_this_month: int
+
+
 class PillarResponse(BaseModel):
     name: str
     status: str
@@ -333,6 +341,36 @@ async def get_weekly_review(user: User = Depends(require_user), db: Session = De
 
     result = pipeline.generate_weekly_review(entries, ctx)
     return WeeklyReviewResponse(**result, entries_this_week=len(recent))
+
+
+@app.get("/ritual/monthly", response_model=MonthlyReviewResponse, tags=["ritual"])
+async def get_monthly_review(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    since = datetime.datetime.utcnow() - datetime.timedelta(days=30)
+    recent = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.user_id == user.id, JournalEntry.timestamp >= since)
+        .order_by(JournalEntry.timestamp.asc())
+        .all()
+    )
+
+    ctx = build_user_context(user.id, db)
+
+    if not recent:
+        return MonthlyReviewResponse(
+            pillars_moved=["No entries this month yet."],
+            pillars_neglected=["All pillars — nothing to assess without journal entries."],
+            blind_spot="Come back after you've built a foundation of entries. The patterns need data.",
+            architectural_decision="Write your first journal entry tonight.",
+            entries_this_month=0,
+        )
+
+    entries = [
+        {"date": e.timestamp.strftime("%A %d %b"), "content": e.content}
+        for e in recent
+    ]
+
+    result = pipeline.generate_monthly_review(entries, ctx)
+    return MonthlyReviewResponse(**result, entries_this_month=len(recent))
 
 
 @app.get("/user/pillars", response_model=list[PillarResponse], tags=["user"])

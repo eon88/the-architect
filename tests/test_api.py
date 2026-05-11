@@ -289,6 +289,58 @@ def test_weekly_review_response_fields_are_strings():
 
 
 # ---------------------------------------------------------------------------
+# Monthly review
+# ---------------------------------------------------------------------------
+
+def test_monthly_review_requires_auth():
+    assert client.get("/ritual/monthly").status_code == 401
+
+
+def test_monthly_review_no_entries_returns_placeholder():
+    token, _ = _login("no_entries_monthly@example.com")
+    res = client.get("/ritual/monthly", headers=auth_headers(token))
+    assert res.status_code == 200
+    data = res.json()
+    assert data["entries_this_month"] == 0
+    assert isinstance(data["pillars_moved"], list)
+    assert isinstance(data["pillars_neglected"], list)
+    assert isinstance(data["blind_spot"], str)
+    assert isinstance(data["architectural_decision"], str)
+
+
+def test_monthly_review_with_entries():
+    token, _ = _login("has_entries_monthly@example.com")
+    client.post("/ritual/evening",
+                json={"content": "I shipped a new feature at work and felt proud."},
+                headers=auth_headers(token))
+    client.post("/ritual/evening",
+                json={"content": "Haven't called my friends in weeks. Feeling isolated."},
+                headers=auth_headers(token))
+
+    res = client.get("/ritual/monthly", headers=auth_headers(token))
+    assert res.status_code == 200
+    data = res.json()
+    assert data["entries_this_month"] == 2
+    assert len(data["pillars_moved"]) >= 1
+    assert len(data["pillars_neglected"]) >= 1
+    assert len(data["blind_spot"]) > 10
+    assert len(data["architectural_decision"]) > 10
+
+
+def test_monthly_review_response_fields_are_strings():
+    token, _ = _login("monthly_field_check@example.com")
+    client.post("/ritual/evening",
+                json={"content": "Deep focus on my craft today."},
+                headers=auth_headers(token))
+    res = client.get("/ritual/monthly", headers=auth_headers(token))
+    data = res.json()
+    assert isinstance(data["blind_spot"], str)
+    assert isinstance(data["architectural_decision"], str)
+    for item in data["pillars_moved"] + data["pillars_neglected"]:
+        assert isinstance(item, str)
+
+
+# ---------------------------------------------------------------------------
 # Pillars
 # ---------------------------------------------------------------------------
 

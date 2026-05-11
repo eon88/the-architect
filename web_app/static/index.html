@@ -76,10 +76,11 @@
         <div id="morning-view" class="hidden">
             <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Morning Ritual</span>
             <h2 id="morning-message" class="text-3xl font-medium leading-relaxed mb-12 italic">"Loading your story..."</h2>
-            <div class="flex justify-center gap-6">
+            <div class="flex justify-center gap-6 flex-wrap">
                 <button onclick="showEvening()" class="text-sm text-gray-500 underline hover:text-white transition">Evening Journal</button>
                 <button onclick="showMap()" class="text-sm text-gray-500 underline hover:text-white transition">Pillar Map</button>
                 <button onclick="showWeeklyReview()" class="text-sm text-gray-500 underline hover:text-white transition">Weekly Review</button>
+                <button onclick="showMonthlyReview()" class="text-sm text-gray-500 underline hover:text-white transition">30-Day Vision</button>
             </div>
         </div>
 
@@ -132,6 +133,39 @@
                 <p id="review-directive" class="text-xl font-medium leading-relaxed"></p>
             </div>
             <p id="review-meta" class="text-xs text-gray-600 text-center"></p>
+        </div>
+    </div>
+
+    <!-- MONTHLY REVIEW SCREEN -->
+    <div id="screen-monthly" class="hidden w-full max-w-2xl">
+        <div class="flex justify-between items-end mb-12">
+            <div>
+                <span class="text-xs uppercase tracking-widest text-gray-500 block mb-1">Architect Hat</span>
+                <h2 class="text-4xl font-black tracking-tighter">30-DAY VISION</h2>
+            </div>
+            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back</button>
+        </div>
+
+        <div id="monthly-loading" class="text-center py-20 text-gray-500">Reading your arc...</div>
+
+        <div id="monthly-content" class="hidden space-y-10">
+            <div>
+                <p class="text-xs uppercase tracking-widest text-green-500 mb-3">What Moved</p>
+                <ul id="monthly-moved" class="space-y-2"></ul>
+            </div>
+            <div>
+                <p class="text-xs uppercase tracking-widest text-red-500 mb-3">What Was Avoided</p>
+                <ul id="monthly-neglected" class="space-y-2"></ul>
+            </div>
+            <div>
+                <p class="text-xs uppercase tracking-widest text-gray-500 mb-3">Your Blind Spot</p>
+                <p id="monthly-blind-spot" class="text-lg leading-relaxed text-gray-300"></p>
+            </div>
+            <div class="glass p-6 rounded-2xl border-white">
+                <p class="text-xs uppercase tracking-widest text-white mb-3">The Architectural Decision</p>
+                <p id="monthly-decision" class="text-xl font-medium leading-relaxed"></p>
+            </div>
+            <p id="monthly-meta" class="text-xs text-gray-600 text-center"></p>
         </div>
     </div>
 
@@ -226,7 +260,7 @@
         // Screens
         // ---------------------------------------------------------------------------
         function hideAll() {
-            ['screen-login','screen-onboard','screen-ritual','screen-map','screen-review','morning-view','evening-view']
+            ['screen-login','screen-onboard','screen-ritual','screen-map','screen-review','screen-monthly','morning-view','evening-view']
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
@@ -417,6 +451,47 @@
             }
         }
 
+
+        async function showMonthlyReview() {
+            if (!authToken) { showLoginScreen(); return; }
+            hideAll();
+            document.getElementById('screen-monthly').classList.remove('hidden');
+            document.getElementById('monthly-loading').classList.remove('hidden');
+            document.getElementById('monthly-content').classList.add('hidden');
+
+            try {
+                const data = await apiFetch('/ritual/monthly');
+
+                const movedEl = document.getElementById('monthly-moved');
+                movedEl.textContent = '';
+                data.pillars_moved.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'text-gray-300 pl-4 border-l border-green-800';
+                    li.textContent = item;
+                    movedEl.appendChild(li);
+                });
+
+                const neglectedEl = document.getElementById('monthly-neglected');
+                neglectedEl.textContent = '';
+                data.pillars_neglected.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'text-gray-400 pl-4 border-l border-red-900';
+                    li.textContent = item;
+                    neglectedEl.appendChild(li);
+                });
+
+                document.getElementById('monthly-blind-spot').textContent = data.blind_spot;
+                document.getElementById('monthly-decision').textContent = data.architectural_decision;
+                document.getElementById('monthly-meta').textContent =
+                    `Based on ${data.entries_this_month} journal ${data.entries_this_month === 1 ? 'entry' : 'entries'} this month`;
+
+                document.getElementById('monthly-loading').classList.add('hidden');
+                document.getElementById('monthly-content').classList.remove('hidden');
+            } catch (e) {
+                showToast(e.message, true);
+                showRitual();
+            }
+        }
 
         // ---------------------------------------------------------------------------
         // Boot: resume session if token exists

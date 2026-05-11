@@ -6,7 +6,7 @@ import urllib.error
 from config import GEMINI_API_KEY
 from prompts import (
     PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT,
-    AUDITOR_PROMPT, EXTRACTOR_PROMPT, WEEKLY_REVIEW_PROMPT,
+    AUDITOR_PROMPT, EXTRACTOR_PROMPT, WEEKLY_REVIEW_PROMPT, MONTHLY_REVIEW_PROMPT,
 )
 from context import UserContext
 
@@ -101,6 +101,13 @@ def _mock_llm(system_prompt: str, user_input: str) -> str:
                 "stalled": ["Several pillars remain untouched — no entries, no movement."],
                 "pattern": "You are engaging with the process. The question is whether engagement is translating into real action outside these walls.",
                 "directive": "Pick one paused pillar and take one concrete action on it before this week ends.",
+            })
+        if "Architect" in first_line:
+            return json.dumps({
+                "pillars_moved": ["Craft/Career — consistent engagement with daily work."],
+                "pillars_neglected": ["Spiritual — no entries, no reflection, no movement."],
+                "blind_spot": "You treat busyness as progress. Every entry is about what you did — almost none are about who you are becoming. Activity is not the same as direction.",
+                "architectural_decision": "Dedicate the first 20 minutes of every Sunday to answering one question in writing: is where I am heading still where I want to go?",
             })
     except (json.JSONDecodeError, KeyError) as e:
         logger.error("Mock LLM error: %s", e)
@@ -205,6 +212,27 @@ def _weekly_review_input(entries: list[dict], ctx: UserContext) -> str:
     return "\n".join(lines)
 
 
+def _monthly_review_input(entries: list[dict], ctx: UserContext) -> str:
+    lines = ["=== MONTHLY REVIEW CONTEXT ==="]
+    lines.append(f"Total sessions to date: {ctx.entry_count}")
+
+    if ctx.user_facts:
+        lines.append("\nUser facts:")
+        for f in ctx.user_facts:
+            lines.append(f"- {f}")
+
+    if ctx.pillar_states:
+        lines.append("\nPillar states (30-day snapshot):")
+        for p in sorted(ctx.pillar_states, key=lambda x: x["days_in_state"], reverse=True):
+            lines.append(f"- {p['name']}: {p['status']} ({p['days_in_state']} days in this state)")
+
+    lines.append(f"\n=== JOURNAL ENTRIES THIS MONTH ({len(entries)} entries) ===")
+    for e in entries:
+        lines.append(f"\n[{e['date']}]:\n{e['content']}")
+
+    return "\n".join(lines)
+
+
 def _extractor_input(journal_text: str, existing_facts: list[str]) -> str:
     facts_section = "\n".join(f"- {f}" for f in existing_facts) if existing_facts else "None yet."
     return (
@@ -276,6 +304,30 @@ class ArchitectPipeline:
                 "stalled":   ["Not enough data to assess all pillars yet."],
                 "pattern":   "Keep journaling — the patterns will emerge with more entries.",
                 "directive": "Write your evening journal every day this week without missing.",
+            }
+
+    def generate_monthly_review(self, entries: list[dict], ctx: UserContext) -> dict:
+        logger.info("Generating monthly review (entries=%d)", len(entries))
+        try:
+            result_json = call_llm(
+                MONTHLY_REVIEW_PROMPT,
+                _monthly_review_input(entries, ctx),
+                json_mode=True,
+            )
+            data = json.loads(result_json)
+            return {
+                "pillars_moved":          [str(x)[:300] for x in data.get("pillars_moved", []) if x],
+                "pillars_neglected":      [str(x)[:300] for x in data.get("pillars_neglected", []) if x],
+                "blind_spot":             str(data.get("blind_spot", ""))[:1000],
+                "architectural_decision": str(data.get("architectural_decision", ""))[:500],
+            }
+        except Exception as e:
+            logger.error("Monthly review generation failed: %s", e)
+            return {
+                "pillars_moved":          ["Keep journaling — momentum will become visible with more entries."],
+                "pillars_neglected":      ["Not enough data to assess neglect yet."],
+                "blind_spot":             "The system needs more journal entries before it can identify your blind spots.",
+                "architectural_decision": "Write every evening this week without exception.",
             }
 
     def extract_facts(self, journal_text: str, existing_facts: list[str]) -> list[str]:

@@ -244,3 +244,48 @@ def test_extract_facts_strings_only():
     for fact in result:
         assert isinstance(fact, str)
         assert len(fact) <= 500
+
+
+# ---------------------------------------------------------------------------
+# ArchitectPipeline.generate_monthly_review
+# ---------------------------------------------------------------------------
+
+def test_generate_monthly_review_returns_required_keys():
+    p = ArchitectPipeline()
+    ctx = make_context()
+    entries = [
+        {"date": "Monday 05 May", "content": "I grinded on work all month."},
+        {"date": "Tuesday 13 May", "content": "Haven't seen friends in weeks."},
+    ]
+    result = p.generate_monthly_review(entries, ctx)
+    assert "pillars_moved" in result
+    assert "pillars_neglected" in result
+    assert "blind_spot" in result
+    assert "architectural_decision" in result
+
+
+def test_generate_monthly_review_no_crash_empty_entries():
+    p = ArchitectPipeline()
+    ctx = make_context(entry_count=0, recent_entries=[], user_facts=[])
+    result = p.generate_monthly_review([], ctx)
+    assert isinstance(result["architectural_decision"], str)
+
+
+def test_generate_monthly_review_lists_are_lists():
+    p = ArchitectPipeline()
+    ctx = make_context()
+    result = p.generate_monthly_review(
+        [{"date": "Monday", "content": "I worked on my project all month."}], ctx
+    )
+    assert isinstance(result["pillars_moved"], list)
+    assert isinstance(result["pillars_neglected"], list)
+
+
+def test_generate_monthly_review_strings_are_strings():
+    p = ArchitectPipeline()
+    ctx = make_context()
+    result = p.generate_monthly_review(
+        [{"date": "Monday", "content": "Focused month."}], ctx
+    )
+    assert isinstance(result["blind_spot"], str)
+    assert isinstance(result["architectural_decision"], str)
