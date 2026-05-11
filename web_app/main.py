@@ -143,6 +143,12 @@ class MonthlyReviewResponse(BaseModel):
     entries_this_month: int
 
 
+class FactResponse(BaseModel):
+    id: int
+    content: str
+    created_at: str
+
+
 class PillarResponse(BaseModel):
     name: str
     status: str
@@ -371,6 +377,40 @@ async def get_monthly_review(user: User = Depends(require_user), db: Session = D
 
     result = pipeline.generate_monthly_review(entries, ctx)
     return MonthlyReviewResponse(**result, entries_this_month=len(recent))
+
+
+@app.get("/user/facts", response_model=list[FactResponse], tags=["user"])
+async def get_user_facts(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    facts = (
+        db.query(UserFact)
+        .filter(UserFact.user_id == user.id)
+        .order_by(UserFact.created_at.desc())
+        .all()
+    )
+    return [
+        FactResponse(
+            id=f.id,
+            content=f.content,
+            created_at=f.created_at.strftime("%d %b %Y"),
+        )
+        for f in facts
+    ]
+
+
+@app.delete("/user/facts/{fact_id}", tags=["user"])
+async def delete_user_fact(
+    fact_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    fact = db.query(UserFact).filter(UserFact.id == fact_id).first()
+    if not fact:
+        raise HTTPException(status_code=404, detail="Fact not found")
+    if fact.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your fact")
+    db.delete(fact)
+    db.commit()
+    return {"status": "deleted"}
 
 
 @app.get("/user/pillars", response_model=list[PillarResponse], tags=["user"])

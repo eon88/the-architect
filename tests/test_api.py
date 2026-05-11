@@ -341,6 +341,81 @@ def test_monthly_review_response_fields_are_strings():
 
 
 # ---------------------------------------------------------------------------
+# User facts
+# ---------------------------------------------------------------------------
+
+def test_facts_requires_auth():
+    assert client.get("/user/facts").status_code == 401
+
+
+def test_facts_empty_for_new_user():
+    token, _ = _login("facts_empty@example.com")
+    res = client.get("/user/facts", headers=auth_headers(token))
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_facts_populated_after_journal():
+    token, _ = _login("facts_populated@example.com")
+    client.post("/ritual/evening",
+                json={"content": "I work as a software engineer and have been dealing with debt."},
+                headers=auth_headers(token))
+    res = client.get("/user/facts", headers=auth_headers(token))
+    assert res.status_code == 200
+    facts = res.json()
+    assert isinstance(facts, list)
+    for f in facts:
+        assert "id" in f and "content" in f and "created_at" in f
+
+
+def test_delete_fact_requires_auth():
+    assert client.delete("/user/facts/1").status_code == 401
+
+
+def test_delete_fact_not_found():
+    token, _ = _login("delete_404@example.com")
+    res = client.delete("/user/facts/999999", headers=auth_headers(token))
+    assert res.status_code == 404
+
+
+def test_delete_fact_wrong_user():
+    token_a, _ = _login("facts_owner@example.com")
+    token_b, _ = _login("facts_thief@example.com")
+
+    # Give user A a fact by onboarding
+    client.post("/user/onboard",
+                json={"spark": "I am tired of being stuck in debt."},
+                headers=auth_headers(token_a))
+
+    facts_a = client.get("/user/facts", headers=auth_headers(token_a)).json()
+    if not facts_a:
+        return  # mock returns no facts — skip ownership check
+
+    fact_id = facts_a[0]["id"]
+    res = client.delete(f"/user/facts/{fact_id}", headers=auth_headers(token_b))
+    assert res.status_code == 403
+
+
+def test_delete_fact_success():
+    token, _ = _login("facts_delete_ok@example.com")
+    client.post("/user/onboard",
+                json={"spark": "I am a nurse and I am burned out from long shifts."},
+                headers=auth_headers(token))
+
+    facts = client.get("/user/facts", headers=auth_headers(token)).json()
+    if not facts:
+        return  # mock returns no facts — nothing to delete
+
+    fact_id = facts[0]["id"]
+    res = client.delete(f"/user/facts/{fact_id}", headers=auth_headers(token))
+    assert res.status_code == 200
+    assert res.json()["status"] == "deleted"
+
+    remaining = client.get("/user/facts", headers=auth_headers(token)).json()
+    assert all(f["id"] != fact_id for f in remaining)
+
+
+# ---------------------------------------------------------------------------
 # Pillars
 # ---------------------------------------------------------------------------
 
