@@ -123,6 +123,7 @@ class WeeklyReviewResponse(BaseModel):
 class PillarResponse(BaseModel):
     name: str
     status: str
+    days_in_state: int
 
 
 class HealthResponse(BaseModel):
@@ -280,4 +281,12 @@ async def get_weekly_review(user: User = Depends(require_user), db: Session = De
 @app.get("/user/pillars", response_model=list[PillarResponse], tags=["user"])
 async def get_pillars(user: User = Depends(require_user), db: Session = Depends(get_db)):
     pillars = db.query(PillarState).filter(PillarState.user_id == user.id).all()
-    return [PillarResponse(name=p.pillar_name, status=p.status) for p in pillars]
+    now = datetime.datetime.utcnow()
+    return [
+        PillarResponse(
+            name=p.pillar_name,
+            status=p.status,
+            days_in_state=max(0, (now - p.last_updated).days),
+        )
+        for p in pillars
+    ]

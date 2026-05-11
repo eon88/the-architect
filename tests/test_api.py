@@ -249,3 +249,20 @@ def test_pillars_status_values_are_valid():
     res = client.get("/user/pillars", headers=auth_headers(token))
     for p in res.json():
         assert p["status"] in ("Moving", "Paused")
+
+
+def test_pillars_days_in_state_present_and_non_negative():
+    token, _ = _login("days_check@example.com")
+    res = client.get("/user/pillars", headers=auth_headers(token))
+    assert res.status_code == 200
+    for p in res.json():
+        assert "days_in_state" in p
+        assert isinstance(p["days_in_state"], int)
+        assert p["days_in_state"] >= 0
+
+
+def test_pillars_days_in_state_zero_for_new_user():
+    token, _ = _login("new_days@example.com")
+    res = client.get("/user/pillars", headers=auth_headers(token))
+    for p in res.json():
+        assert p["days_in_state"] == 0

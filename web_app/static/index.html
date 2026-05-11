@@ -276,18 +276,42 @@
                 pillars.forEach(p => {
                     const card = document.createElement('div');
                     const isMoving = p.status === 'Moving';
-                    card.className = `pillar-card glass p-8 rounded-3xl text-center ${isMoving ? 'border-white' : 'border-gray-800'}`;
+
+                    // Urgency colour: green=Moving, yellow=Paused<7d, orange=7-14d, red=14+d
+                    let statusColor, borderClass;
+                    if (isMoving) {
+                        statusColor = 'text-green-400';
+                        borderClass = 'border-white';
+                    } else if (p.days_in_state < 7) {
+                        statusColor = 'text-yellow-400';
+                        borderClass = 'border-yellow-900';
+                    } else if (p.days_in_state < 14) {
+                        statusColor = 'text-orange-400';
+                        borderClass = 'border-orange-900';
+                    } else {
+                        statusColor = 'text-red-400';
+                        borderClass = 'border-red-900';
+                    }
+
+                    card.className = `pillar-card glass p-8 rounded-3xl text-center ${borderClass}`;
 
                     const title = document.createElement('h3');
                     title.className = 'text-xl font-bold mb-2';
                     title.textContent = p.name;
 
                     const badge = document.createElement('span');
-                    badge.className = `text-xs uppercase tracking-widest ${isMoving ? 'text-green-400' : 'text-gray-500'}`;
+                    badge.className = `text-xs uppercase tracking-widest ${statusColor} block mb-1`;
                     badge.textContent = p.status;
+
+                    const days = document.createElement('span');
+                    days.className = 'text-xs text-gray-600';
+                    days.textContent = p.days_in_state === 0
+                        ? 'since today'
+                        : `${p.days_in_state}d in this state`;
 
                     card.appendChild(title);
                     card.appendChild(badge);
+                    card.appendChild(days);
                     grid.appendChild(card);
                 });
             } catch (e) {
