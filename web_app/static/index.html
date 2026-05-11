@@ -3,35 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Architect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>THE ARCHITECT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .pillar-card { transition: all 0.3s ease; }
-        .pillar-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
-        .hidden { display: none; }
+        :root {
+            --green:      #00ff41;
+            --green-dim:  #00b32c;
+            --green-dark: #003b0f;
+            --green-glow: rgba(0,255,65,0.15);
+            --black:      #000300;
+            --panel:      rgba(0,10,2,0.92);
+            --border:     rgba(0,255,65,0.18);
+            --border-hi:  rgba(0,255,65,0.55);
+            --text-dim:   #00882a;
+            --red:        #ff2020;
+        }
 
-        /* Toast */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { height: 100%; overflow: hidden; }
+
+        body {
+            background: var(--black);
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            animation: flicker 9s infinite;
+        }
+
+        #matrix-canvas { position: fixed; inset: 0; z-index: 0; opacity: 0.16; }
+
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        @keyframes flicker {
+            0%,100% { opacity:1 } 91% { opacity:1 } 92% { opacity:0.87 }
+            93% { opacity:1 }    96% { opacity:0.92 } 97% { opacity:1 }
+        }
+
+        /* ── PANEL ── */
+        .panel {
+            position: relative; z-index: 10;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 2rem 1.75rem; width: 100%;
+            box-shadow: 0 0 60px rgba(0,255,65,0.04), inset 0 0 60px rgba(0,0,0,0.6);
+            overflow-y: auto;
+            max-height: calc(100vh - 3rem);
+        }
+        .panel::before, .panel::after {
+            content: ''; position: absolute;
+            width: 14px; height: 14px;
+            border-color: var(--green); border-style: solid;
+        }
+        .panel::before { top:-1px; left:-1px; border-width: 2px 0 0 2px; }
+        .panel::after  { bottom:-1px; right:-1px; border-width: 0 2px 2px 0; }
+
+        /* ── SYS BAR ── */
+        .sys-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.62rem; color: var(--text-dim);
+            margin-bottom: 1.5rem; padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border); letter-spacing: 0.08em;
+        }
+        .sys-dot {
+            display: inline-block; width: 5px; height: 5px;
+            background: var(--green); border-radius: 50%; margin-right: 5px;
+            animation: blink 1.2s step-end infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+        /* ── WORDMARK ── */
+        .wordmark {
+            font-family: 'VT323', monospace;
+            font-size: clamp(3.2rem, 10vw, 5.5rem);
+            line-height: 0.88; letter-spacing: 0.12em;
+            text-shadow: 0 0 20px var(--green), 0 0 50px rgba(0,255,65,0.25);
+            color: var(--green);
+        }
+        @keyframes glitch {
+            0%   { text-shadow: 2px 0 var(--red), -2px 0 #00ffff; clip-path: inset(20% 0 60% 0); }
+            20%  { text-shadow: -2px 0 var(--red), 2px 0 #00ffff; clip-path: inset(50% 0 30% 0); }
+            40%  { text-shadow: 2px 0 #00ffff, -2px 0 var(--red); clip-path: inset(10% 0 80% 0); }
+            60%  { text-shadow: 0 0 20px var(--green), 0 0 50px rgba(0,255,65,0.25); clip-path: none; }
+            100% { text-shadow: 0 0 20px var(--green), 0 0 50px rgba(0,255,65,0.25); clip-path: none; }
+        }
+        .wordmark:hover { animation: glitch 0.35s ease forwards; cursor: default; }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: inline-block; background: transparent;
+            border: 1px solid var(--border-hi); color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+            padding: 0.6rem 1.5rem; cursor: pointer;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .btn::before { content: '> '; color: var(--text-dim); }
+        .btn:hover { background: var(--green-glow); box-shadow: 0 0 18px rgba(0,255,65,0.18); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-ghost {
+            background: none; border: none; color: var(--text-dim);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem; letter-spacing: 0.12em;
+            cursor: pointer; transition: color 0.15s; padding: 0;
+        }
+        .btn-ghost::before { content: '[ '; }
+        .btn-ghost::after  { content: ' ]'; }
+        .btn-ghost:hover { color: var(--green); }
+
+        /* ── MISC ── */
+        .sys-label {
+            font-size: 0.6rem; letter-spacing: 0.28em;
+            color: var(--text-dim); text-transform: uppercase;
+        }
+        .divider { border: none; border-top: 1px solid var(--border); margin: 1.1rem 0; }
+
+        .input-field {
+            width: 100%; background: rgba(0,255,65,0.02);
+            border: 1px solid var(--border); color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem; padding: 0.7rem 1rem; outline: none;
+            caret-color: var(--green); letter-spacing: 0.05em;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-field:focus { border-color: var(--border-hi); box-shadow: 0 0 0 2px rgba(0,255,65,0.06); }
+        .input-field::placeholder { color: var(--text-dim); opacity: 0.55; }
+
+        #morning-message {
+            font-family: 'VT323', monospace;
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            line-height: 1.3; text-shadow: 0 0 10px rgba(0,255,65,0.35);
+        }
+        #morning-directive {
+            font-size: 0.9rem; line-height: 1.6;
+            border-left: 2px solid var(--green-dim);
+            padding-left: 1rem; margin: 1rem 0;
+        }
+        #morning-stats {
+            display: flex; gap: 1rem; flex-wrap: wrap;
+            font-size: 0.6rem; letter-spacing: 0.15em;
+            color: var(--text-dim); text-transform: uppercase;
+            margin: 0.5rem 0 0.75rem;
+        }
+
+        #seed-question { font-size: 0.95rem; line-height: 1.7; }
+        #seed-question::before { content: '> '; color: var(--text-dim); }
+
+        #journal-input, #spark-input {
+            width: 100%; min-height: 190px;
+            background: rgba(0,255,65,0.02); border: 1px solid var(--border);
+            color: var(--green); font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem; line-height: 1.75; padding: 1rem;
+            outline: none; resize: vertical; caret-color: var(--green);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        #journal-input:focus, #spark-input:focus {
+            border-color: var(--border-hi); box-shadow: 0 0 0 2px rgba(0,255,65,0.06);
+        }
+        #journal-input::placeholder, #spark-input::placeholder {
+            color: var(--text-dim); opacity: 0.55; font-style: italic;
+        }
+        .char-count { font-size: 0.6rem; color: var(--text-dim); text-align: right; margin-top: 4px; }
+
+        .nav-bar {
+            display: flex; gap: 0.75rem 1.25rem; flex-wrap: wrap;
+            margin-top: 1.25rem; padding-top: 1rem;
+            border-top: 1px solid var(--border); align-items: center;
+        }
+
+        /* ── PILLAR GRID ── */
+        #pillars-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.65rem;
+        }
+        .pillar-card {
+            border: 1px solid var(--border); padding: 1.1rem 1rem;
+            position: relative; background: rgba(0,255,65,0.015);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .pillar-card:hover { border-color: var(--border-hi); box-shadow: 0 0 12px rgba(0,255,65,0.08); }
+        .pillar-card.moving { border-color: rgba(0,255,65,0.4); }
+        .pillar-card.moving::before {
+            content: ''; position: absolute; top:0; left:0; right:0; height:1px;
+            background: linear-gradient(90deg, var(--green), transparent);
+        }
+        .pillar-card.paused-warn   { border-color: rgba(255,180,0,0.35); }
+        .pillar-card.paused-alert  { border-color: rgba(255,100,0,0.4); }
+        .pillar-card.paused-danger { border-color: rgba(255,32,32,0.45); }
+        .pillar-name   { font-size: 0.78rem; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+        .pillar-status { font-size: 0.58rem; letter-spacing: 0.2em; }
+        .pillar-days   { font-size: 0.55rem; color: var(--text-dim); margin-top: 0.25rem; }
+        .status-moving { color: var(--green); }
+        .status-paused { color: var(--text-dim); }
+
+        /* ── REVIEW ── */
+        .review-section { margin-bottom: 1.4rem; }
+        .review-label {
+            font-size: 0.6rem; letter-spacing: 0.28em;
+            color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.6rem;
+        }
+        .review-label.accent { color: var(--green); }
+        .review-label.danger { color: var(--red); }
+        .review-list { list-style: none; }
+        .review-list li {
+            font-size: 0.82rem; line-height: 1.7;
+            padding: 0.35rem 0.75rem;
+            border-left: 2px solid var(--border-hi); margin-bottom: 0.35rem;
+        }
+        .review-list li.dim { border-left-color: var(--text-dim); color: var(--text-dim); }
+        .review-text { font-size: 0.85rem; line-height: 1.8; }
+        .review-directive {
+            border: 1px solid var(--border-hi); padding: 1rem;
+            font-size: 0.9rem; line-height: 1.6;
+        }
+        .review-directive::before { content: '> '; color: var(--text-dim); }
+        .review-meta {
+            font-size: 0.58rem; letter-spacing: 0.1em;
+            color: var(--text-dim); text-align: center; margin-top: 1rem;
+        }
+
+        /* ── MILESTONES ── */
+        .milestone-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.65rem; }
+        .milestone-label { width: 9rem; flex-shrink: 0; }
+        .milestone-name { font-size: 0.72rem; letter-spacing: 0.06em; }
+        .milestone-badge { font-size: 0.55rem; letter-spacing: 0.1em; color: var(--text-dim); margin-top: 2px; }
+        .dots-wrap { display: flex; gap: 2px; flex-wrap: wrap; }
+        .dot { width: 8px; height: 8px; border-radius: 1px; flex-shrink: 0; }
+
+        /* ── FACTS ── */
+        .fact-item {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 1rem; border: 1px solid var(--border); padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .fact-text { font-size: 0.8rem; line-height: 1.6; }
+        .fact-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; flex-shrink: 0; }
+        .fact-date { font-size: 0.58rem; letter-spacing: 0.06em; color: var(--text-dim); white-space: nowrap; }
+        .fact-del {
+            background: none; border: none; color: var(--text-dim);
+            font-family: 'Share Tech Mono', monospace; font-size: 0.58rem;
+            letter-spacing: 0.06em; cursor: pointer; padding: 0;
+            transition: color 0.15s;
+        }
+        .fact-del:hover { color: var(--red); }
+
+        /* ── MIDDAY ── */
+        #midday-pillar {
+            font-size: 0.6rem; letter-spacing: 0.28em;
+            color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.75rem;
+        }
+        #midday-challenge {
+            font-family: 'VT323', monospace;
+            font-size: clamp(1.4rem, 3.5vw, 2rem);
+            line-height: 1.3; text-shadow: 0 0 10px rgba(0,255,65,0.3); margin-bottom: 1.5rem;
+        }
+
+        /* ── ONBOARD ── */
+        .onboard-question {
+            font-family: 'VT323', monospace;
+            font-size: clamp(1.8rem, 5vw, 2.8rem);
+            line-height: 1.15; text-shadow: 0 0 10px rgba(0,255,65,0.3); margin-bottom: 0.5rem;
+        }
+        .onboard-sub {
+            font-size: 0.7rem; letter-spacing: 0.1em;
+            color: var(--text-dim); margin-bottom: 1.25rem;
+        }
+        .onboard-sub::before { content: '// '; }
+
+        /* ── ANIMATIONS ── */
+        @keyframes matrixIn {
+            0%   { opacity:0; transform:translateY(-6px); filter:blur(1px); }
+            100% { opacity:1; transform:translateY(0);    filter:blur(0); }
+        }
+        .fi { animation: matrixIn 0.4s ease forwards; }
+        .d1 { animation-delay: 0.05s; opacity: 0; }
+        .d2 { animation-delay: 0.16s; opacity: 0; }
+        .d3 { animation-delay: 0.28s; opacity: 0; }
+        .d4 { animation-delay: 0.42s; opacity: 0; }
+        .d5 { animation-delay: 0.56s; opacity: 0; }
+
+        /* ── TOAST ── */
         #toast {
-            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(120%);
-            background: #1a1a1a; border: 1px solid rgba(255,255,255,0.15);
-            color: #e5e5e5; padding: 0.9rem 2rem; border-radius: 9999px;
-            font-size: 0.9rem; transition: transform 0.3s ease; z-index: 100;
-            white-space: nowrap;
+            position: fixed; bottom: 2rem; left: 50%;
+            transform: translateX(-50%) translateY(120%);
+            background: var(--panel); border: 1px solid var(--border-hi);
+            color: var(--green); padding: 0.75rem 2rem;
+            font-size: 0.72rem; letter-spacing: 0.1em;
+            transition: transform 0.3s ease; z-index: 9999; white-space: nowrap;
         }
         #toast.show { transform: translateX(-50%) translateY(0); }
-        #toast.error { border-color: rgba(239,68,68,0.5); color: #fca5a5; }
+        #toast.error { border-color: rgba(255,32,32,0.5); color: var(--red); }
 
-        /* Spinner */
+        /* ── SPINNER ── */
         .spinner {
-            display: inline-block; width: 16px; height: 16px;
-            border: 2px solid rgba(0,0,0,0.3); border-top-color: #000;
+            display: inline-block; width: 13px; height: 13px;
+            border: 2px solid rgba(0,255,65,0.2); border-top-color: var(--green);
             border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Matrix boot sequence */
+        /* ── BOOT SCREEN ── */
         #screen-boot {
             position: fixed; inset: 0; background: #000;
             display: flex; flex-direction: column; justify-content: center;
@@ -41,809 +324,796 @@
         @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
 
         .matrix-line {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: clamp(0.7rem, 1.5vw, 0.9rem);
-            color: #00ff41;
-            text-shadow: 0 0 8px rgba(0,255,65,0.6);
-            line-height: 1.8;
-            white-space: pre;
-            min-height: 1.8em;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(0.65rem, 1.4vw, 0.82rem);
+            color: #00ff41; text-shadow: 0 0 8px rgba(0,255,65,0.6);
+            line-height: 1.8; white-space: pre; min-height: 1.8em;
         }
         .matrix-dim { color: #005c18; text-shadow: none; }
         .matrix-cursor::after { content: '█'; animation: blink 0.6s step-end infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
 
+        /* ── STATUS HELPERS ── */
+        .loading-text {
+            font-size: 0.72rem; letter-spacing: 0.2em;
+            color: var(--text-dim); text-align: center; padding: 2rem 0;
+            animation: blink 1.2s step-end infinite;
+        }
+        .loading-text::before { content: '> '; }
+        .empty-text {
+            font-size: 0.72rem; letter-spacing: 0.15em;
+            color: var(--text-dim); text-align: center; padding: 2rem 0;
+        }
+        .empty-text::before { content: '// '; }
+
+        .hidden { display: none !important; }
+
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: var(--black); }
+        ::-webkit-scrollbar-thumb { background: var(--green-dark); }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
+<body>
 
-    <!-- MATRIX BOOT SCREEN -->
-    <div id="screen-boot">
-        <div id="boot-lines" style="max-width:600px;width:100%;margin:0 auto;"></div>
+<canvas id="matrix-canvas"></canvas>
+<div id="toast"></div>
+
+<!-- ═══════════════════  BOOT  ═══════════════════ -->
+<div id="screen-boot">
+    <div id="boot-lines" style="max-width:600px;width:100%;margin:0 auto;"></div>
+</div>
+
+<!-- ═══════════════════  LOGIN  ══════════════════ -->
+<div id="screen-login" class="panel hidden" style="max-width:460px; text-align:center;">
+    <div class="sys-bar fi d1">
+        <span><span class="sys-dot"></span>SYS::ONLINE</span>
+        <span id="clock-display">--:--:--</span>
+        <span>NODE_01</span>
     </div>
-    <!-- TOAST -->
-    <div id="toast"></div>
-
-    <!-- LOGIN SCREEN -->
-    <div id="screen-login" class="text-center max-w-md w-full">
-        <h1 class="text-5xl font-black tracking-tighter mb-8">THE ARCHITECT</h1>
-        <p class="text-gray-400 mb-12 text-lg">Design your life. Master your pillars.</p>
-        <input
-            id="email-input"
-            type="email"
-            placeholder="Your email address"
-            class="w-full py-4 px-6 mb-4 bg-transparent border-2 border-gray-800 rounded-full focus:border-white outline-none transition text-center text-lg"
-        />
-        <button id="login-btn" onclick="login()" class="w-full py-4 bg-red-600 text-white font-bold rounded-full hover:bg-red-500 transition duration-300 text-lg">
-            Take the red pill
-        </button>
-        <button onclick="window.close()" class="w-full mt-4 py-3 text-blue-500 hover:text-blue-400 transition text-sm font-medium">
-            blue pill
-        </button>
+    <div class="fi d2">
+        <h1 class="wordmark">THE<br>ARCHITECT</h1>
     </div>
-
-    <!-- MIDDAY SCREEN -->
-    <div id="screen-midday" class="hidden text-center max-w-xl w-full">
-        <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Midday</span>
-        <p id="midday-pillar" class="text-xs uppercase tracking-widest text-gray-600 mb-6"></p>
-        <p id="midday-challenge" class="text-2xl font-medium leading-relaxed mb-12"></p>
-        <button onclick="showRitual()" class="text-sm text-gray-500 underline hover:text-white transition">Back to Morning</button>
+    <div class="fi d3" style="font-size:0.65rem;color:var(--text-dim);letter-spacing:0.2em;margin:0.5rem 0 1.5rem;">
+        // DESIGN YOUR LIFE. MASTER YOUR PILLARS.
     </div>
-
-    <!-- ONBOARDING SCREEN -->
-    <div id="screen-onboard" class="hidden text-center max-w-xl w-full">
-        <span class="text-xs uppercase tracking-widest text-gray-500 mb-6 block">The Single Spark</span>
-        <h2 class="text-3xl font-bold mb-4 leading-snug">What is the one thing in your life<br>you are tired of settling for?</h2>
-        <p class="text-gray-500 mb-10 text-sm">Be specific. Be honest. No one is watching.</p>
-        <textarea
-            id="spark-input"
-            class="w-full h-40 p-6 bg-transparent border-2 border-gray-800 rounded-2xl focus:border-white outline-none transition text-lg"
-            placeholder="Write here..."
-            maxlength="2000"
-        ></textarea>
-        <div class="flex justify-end mt-2 mb-8">
-            <span id="spark-char-count" class="text-xs text-gray-600">0 / 2,000</span>
-        </div>
-        <button id="spark-btn" onclick="submitSpark()" class="w-full py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300 text-lg">
-            Begin
+    <hr class="divider">
+    <div class="fi d3" style="font-size:0.68rem;color:var(--text-dim);text-align:left;line-height:2;margin-bottom:1.25rem;">
+        <div>> SYSTEM INITIALIZING...</div>
+        <div>> LOADING PERSONAL DATA...</div>
+        <div>> AWAITING AUTHENTICATION_</div>
+    </div>
+    <div class="fi d4" style="margin-bottom:0.75rem;">
+        <input id="email-input" type="email" placeholder="// YOUR EMAIL ADDRESS" class="input-field" />
+    </div>
+    <div class="fi d5">
+        <button id="login-btn" onclick="login()" class="btn" style="width:100%;">TAKE THE RED PILL</button>
+        <button id="blue-pill-btn" onclick="bluePill(this)"
+            style="width:100%;margin-top:0.75rem;background:transparent;border:1px solid rgba(30,100,255,0.35);color:#4a5a8a;font-family:'Share Tech Mono',monospace;font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;padding:0.6rem 1.5rem;cursor:pointer;transition:all 0.15s;">
+            TAKE THE BLUE PILL
         </button>
     </div>
+</div>
 
-    <!-- RITUAL SCREEN -->
-    <div id="screen-ritual" class="hidden w-full max-w-2xl text-center">
-        <div id="morning-view" class="hidden">
-            <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Morning Ritual</span>
-            <h2 id="morning-message" class="text-3xl font-medium leading-relaxed mb-6 italic">"Loading your story..."</h2>
-            <p id="morning-directive" class="hidden text-base font-semibold text-white mb-8 px-4 py-3 border border-gray-700 rounded-xl"></p>
-            <div id="morning-stats" class="hidden flex justify-center gap-6 mb-10">
-                <span id="stat-streak" class="text-xs uppercase tracking-widest text-gray-500"></span>
-                <span class="text-xs text-gray-700">·</span>
-                <span id="stat-total" class="text-xs uppercase tracking-widest text-gray-500"></span>
-            </div>
-            <div class="flex justify-center gap-6 flex-wrap">
-                <button onclick="showMidday()" class="text-sm text-gray-500 underline hover:text-white transition">Midday</button>
-                <button onclick="showEvening()" class="text-sm text-gray-500 underline hover:text-white transition">Evening Journal</button>
-                <button onclick="showMap()" class="text-sm text-gray-500 underline hover:text-white transition">Pillar Map</button>
-                <button onclick="showWeeklyReview()" class="text-sm text-gray-500 underline hover:text-white transition">Weekly Review</button>
-                <button onclick="showMonthlyReview()" class="text-sm text-gray-500 underline hover:text-white transition">30-Day Vision</button>
-                <button onclick="showMilestones()" class="text-sm text-gray-500 underline hover:text-white transition">Milestone Map</button>
-                <button onclick="showFacts()" class="text-sm text-gray-500 underline hover:text-white transition">What I Know</button>
-            </div>
-        </div>
+<!-- ═══════════════════  ONBOARDING  ════════════ -->
+<div id="screen-onboard" class="panel hidden" style="max-width:520px;">
+    <div class="sys-bar">
+        <span><span class="sys-dot"></span>INIT::PROFILE</span>
+        <span id="clock-onboard">--:--:--</span>
+        <span>SINGLE SPARK</span>
+    </div>
+    <div class="sys-label">// THE SINGLE SPARK</div>
+    <hr class="divider">
+    <p class="onboard-question">What is the one thing<br>you are tired of<br>settling for?</p>
+    <p class="onboard-sub">Be specific. Be honest. No one is watching.</p>
+    <textarea id="spark-input" placeholder="// INPUT YOUR TRANSMISSION..." maxlength="2000"></textarea>
+    <p class="char-count"><span id="spark-char-count">0000</span> / 2000 CHARS</p>
+    <div class="nav-bar">
+        <button id="spark-btn" onclick="submitSpark()" class="btn">BEGIN</button>
+    </div>
+</div>
 
-        <div id="evening-view" class="hidden">
-            <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Evening Reflection</span>
-            <p id="seed-question" class="text-xl mb-8 leading-relaxed"></p>
-            <textarea
-                id="journal-input"
-                class="w-full h-48 p-6 bg-transparent border-2 border-gray-800 rounded-2xl focus:border-white outline-none transition text-lg"
-                placeholder="Write here..."
-                maxlength="10000"
-            ></textarea>
-            <div class="flex justify-between items-center mt-2 mb-8">
-                <button onclick="showRitual()" class="text-sm text-gray-500 hover:text-white transition">Back</button>
-                <span id="char-count" class="text-xs text-gray-600">0 / 10,000</span>
-            </div>
-            <button id="submit-btn" onclick="submitJournal()" class="px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300">
-                Submit
-            </button>
+<!-- ═══════════════════  RITUAL  ═════════════════ -->
+<div id="screen-ritual" class="panel hidden" style="max-width:580px;">
+    <div class="sys-bar">
+        <span><span class="sys-dot"></span>RITUAL::ACTIVE</span>
+        <span id="ritual-clock">--:--:--</span>
+        <span>UID:<span id="uid-display">000000</span></span>
+    </div>
+
+    <!-- MORNING -->
+    <div id="morning-view" class="hidden">
+        <div class="sys-label">// MORNING PROTOCOL</div>
+        <hr class="divider">
+        <h2 id="morning-message">"LOADING YOUR STORY..."</h2>
+        <p id="morning-directive" class="hidden"></p>
+        <div id="morning-stats" class="hidden"></div>
+        <div class="nav-bar">
+            <button onclick="showMidday()" class="btn-ghost">MIDDAY</button>
+            <button onclick="showEvening()" class="btn-ghost">EVENING</button>
+            <button onclick="showMap()" class="btn-ghost">PILLAR MAP</button>
+            <button onclick="showWeeklyReview()" class="btn-ghost">WEEKLY</button>
+            <button onclick="showMonthlyReview()" class="btn-ghost">MONTHLY</button>
+            <button onclick="showMilestones()" class="btn-ghost">MILESTONES</button>
+            <button onclick="showFacts()" class="btn-ghost">WHAT I KNOW</button>
         </div>
     </div>
 
-    <!-- WEEKLY REVIEW SCREEN -->
-    <div id="screen-review" class="hidden w-full max-w-2xl">
-        <div class="flex justify-between items-end mb-12">
-            <div>
-                <span class="text-xs uppercase tracking-widest text-gray-500 block mb-1">Manager Hat</span>
-                <h2 class="text-4xl font-black tracking-tighter">WEEKLY REVIEW</h2>
-            </div>
-            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back</button>
+    <!-- EVENING -->
+    <div id="evening-view" class="hidden">
+        <div class="sys-label">// EVENING DEBRIEF</div>
+        <hr class="divider">
+        <p id="seed-question"></p>
+        <div style="margin-top:1.25rem;">
+            <textarea id="journal-input" placeholder="// INPUT YOUR TRANSMISSION..." maxlength="10000"></textarea>
+            <p class="char-count"><span id="char-count">0</span> / 10,000 CHARS</p>
         </div>
-
-        <div id="review-loading" class="text-center py-20 text-gray-500">Analysing your week...</div>
-
-        <div id="review-content" class="hidden space-y-8">
-            <div>
-                <p class="text-xs uppercase tracking-widest text-green-500 mb-3">What Moved</p>
-                <ul id="review-moved" class="space-y-2"></ul>
-            </div>
-            <div>
-                <p class="text-xs uppercase tracking-widest text-gray-500 mb-3">What Stalled</p>
-                <ul id="review-stalled" class="space-y-2"></ul>
-            </div>
-            <div>
-                <p class="text-xs uppercase tracking-widest text-gray-500 mb-3">The Pattern</p>
-                <p id="review-pattern" class="text-lg leading-relaxed text-gray-300"></p>
-            </div>
-            <div class="glass p-6 rounded-2xl border-white">
-                <p class="text-xs uppercase tracking-widest text-white mb-3">This Week's Directive</p>
-                <p id="review-directive" class="text-xl font-medium leading-relaxed"></p>
-            </div>
-            <p id="review-meta" class="text-xs text-gray-600 text-center"></p>
+        <div class="nav-bar">
+            <button id="submit-btn" onclick="submitJournal()" class="btn">TRANSMIT</button>
+            <button onclick="showRitual()" class="btn-ghost">MORNING</button>
         </div>
     </div>
+</div>
 
-    <!-- MONTHLY REVIEW SCREEN -->
-    <div id="screen-monthly" class="hidden w-full max-w-2xl">
-        <div class="flex justify-between items-end mb-12">
-            <div>
-                <span class="text-xs uppercase tracking-widest text-gray-500 block mb-1">Architect Hat</span>
-                <h2 class="text-4xl font-black tracking-tighter">30-DAY VISION</h2>
-            </div>
-            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back</button>
-        </div>
-
-        <div id="monthly-loading" class="text-center py-20 text-gray-500">Reading your arc...</div>
-
-        <div id="monthly-content" class="hidden space-y-10">
-            <div>
-                <p class="text-xs uppercase tracking-widest text-green-500 mb-3">What Moved</p>
-                <ul id="monthly-moved" class="space-y-2"></ul>
-            </div>
-            <div>
-                <p class="text-xs uppercase tracking-widest text-red-500 mb-3">What Was Avoided</p>
-                <ul id="monthly-neglected" class="space-y-2"></ul>
-            </div>
-            <div>
-                <p class="text-xs uppercase tracking-widest text-gray-500 mb-3">Your Blind Spot</p>
-                <p id="monthly-blind-spot" class="text-lg leading-relaxed text-gray-300"></p>
-            </div>
-            <div class="glass p-6 rounded-2xl border-white">
-                <p class="text-xs uppercase tracking-widest text-white mb-3">The Architectural Decision</p>
-                <p id="monthly-decision" class="text-xl font-medium leading-relaxed"></p>
-            </div>
-            <p id="monthly-meta" class="text-xs text-gray-600 text-center"></p>
-        </div>
+<!-- ═══════════════════  MIDDAY  ═════════════════ -->
+<div id="screen-midday" class="panel hidden" style="max-width:520px;">
+    <div class="sys-bar">
+        <span><span class="sys-dot"></span>MIDDAY::ACTIVE</span>
+        <span id="clock-midday">--:--:--</span>
+        <span>CHECK-IN</span>
     </div>
-
-    <!-- MILESTONES SCREEN -->
-    <div id="screen-milestones" class="hidden w-full max-w-3xl">
-        <div class="flex justify-between items-end mb-4">
-            <div>
-                <span class="text-xs uppercase tracking-widest text-gray-500 block mb-1">Manager Hat</span>
-                <h2 class="text-4xl font-black tracking-tighter">MILESTONE MAP</h2>
-            </div>
-            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back</button>
-        </div>
-        <p class="text-gray-600 text-sm mb-10">28-day activity. Green = Moving. Red = Paused. Dark = no entry.</p>
-
-        <div id="milestones-loading" class="text-center py-20 text-gray-500">Loading...</div>
-        <div id="milestones-grid" class="hidden space-y-4"></div>
+    <div class="sys-label">// MIDDAY CHALLENGE</div>
+    <hr class="divider">
+    <p id="midday-pillar"></p>
+    <p id="midday-challenge"></p>
+    <div class="nav-bar">
+        <button onclick="showRitual()" class="btn-ghost">BACK TO MORNING</button>
     </div>
+</div>
 
-    <!-- FACTS SCREEN -->
-    <div id="screen-facts" class="hidden w-full max-w-2xl">
-        <div class="flex justify-between items-end mb-4">
-            <div>
-                <span class="text-xs uppercase tracking-widest text-gray-500 block mb-1">Memory</span>
-                <h2 class="text-4xl font-black tracking-tighter">WHAT I KNOW</h2>
-            </div>
-            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back</button>
-        </div>
-        <p class="text-gray-600 text-sm mb-10">Auto-extracted from your journals. Delete anything that's wrong.</p>
-
-        <div id="facts-loading" class="text-center py-20 text-gray-500">Loading...</div>
-        <div id="facts-empty" class="hidden text-center py-20 text-gray-600">Nothing yet. Keep journaling.</div>
-        <ul id="facts-list" class="hidden space-y-3"></ul>
+<!-- ═══════════════════  WEEKLY REVIEW  ══════════ -->
+<div id="screen-review" class="panel hidden" style="max-width:580px;">
+    <div class="sys-bar">
+        <span><span class="sys-dot"></span>REVIEW::WEEKLY</span>
+        <span id="clock-review">--:--:--</span>
+        <button onclick="showRitual()" class="btn-ghost" style="font-size:0.58rem;">BACK</button>
     </div>
-
-    <!-- MAP SCREEN -->
-    <div id="screen-map" class="hidden w-full max-w-4xl">
-        <div class="flex justify-between items-end mb-12">
-            <h2 class="text-4xl font-black tracking-tighter">PILLAR MAP</h2>
-            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back to Ritual</button>
+    <div class="sys-label">// MANAGER HAT — WEEKLY REVIEW</div>
+    <hr class="divider">
+    <p id="review-loading" class="loading-text">ANALYSING YOUR WEEK</p>
+    <div id="review-content" class="hidden">
+        <div class="review-section">
+            <p class="review-label accent">WHAT MOVED</p>
+            <ul id="review-moved" class="review-list"></ul>
         </div>
-        <div id="pillars-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Pillars injected here -->
+        <div class="review-section">
+            <p class="review-label">WHAT STALLED</p>
+            <ul id="review-stalled" class="review-list"></ul>
         </div>
+        <div class="review-section">
+            <p class="review-label">THE PATTERN</p>
+            <p id="review-pattern" class="review-text"></p>
+        </div>
+        <div class="review-section">
+            <p class="review-label accent">THIS WEEK'S DIRECTIVE</p>
+            <p id="review-directive" class="review-directive"></p>
+        </div>
+        <p id="review-meta" class="review-meta"></p>
     </div>
+</div>
 
-    <script>
-        // ---------------------------------------------------------------------------
-        // Session state (persisted across page refreshes)
-        // ---------------------------------------------------------------------------
-        let authToken  = sessionStorage.getItem('architect_token');
-        let userId     = sessionStorage.getItem('architect_user_id');
+<!-- ═══════════════════  MONTHLY REVIEW  ═════════ -->
+<div id="screen-monthly" class="panel hidden" style="max-width:580px;">
+    <div class="sys-bar">
+        <span><span class="sys-dot"></span>REVIEW::MONTHLY</span>
+        <span id="clock-monthly">--:--:--</span>
+        <button onclick="showRitual()" class="btn-ghost" style="font-size:0.58rem;">BACK</button>
+    </div>
+    <div class="sys-label">// ARCHITECT HAT — 30-DAY VISION</div>
+    <hr class="divider">
+    <p id="monthly-loading" class="loading-text">READING YOUR ARC</p>
+    <div id="monthly-content" class="hidden">
+        <div class="review-section">
+            <p class="review-label accent">PILLARS MOVED</p>
+            <ul id="monthly-moved" class="review-list"></ul>
+        </div>
+        <div class="review-section">
+            <p class="review-label danger">PILLARS AVOIDED</p>
+            <ul id="monthly-neglected" class="review-list"></ul>
+        </div>
+        <div class="review-section">
+            <p class="review-label">YOUR BLIND SPOT</p>
+            <p id="monthly-blind-spot" class="review-text"></p>
+        </div>
+        <div class="review-section">
+            <p class="review-label accent">THE ARCHITECTURAL DECISION</p>
+            <p id="monthly-decision" class="review-directive"></p>
+        </div>
+        <p id="monthly-meta" class="review-meta"></p>
+    </div>
+</div>
 
-        // ---------------------------------------------------------------------------
-        // Toast
-        // ---------------------------------------------------------------------------
-        let toastTimer = null;
-        function showToast(msg, isError = false) {
-            const el = document.getElementById('toast');
-            el.textContent = msg;
-            el.classList.toggle('error', isError);
-            el.classList.add('show');
-            clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
-        }
+<!-- ═══════════════════  MILESTONES  ═════════════ -->
+<div id="screen-milestones" class="panel hidden" style="max-width:780px;width:100%;">
+    <div class="sys-bar">
+        <span><span class="sys-dot"></span>MAP::MILESTONES</span>
+        <span>28-DAY ACTIVITY</span>
+        <button onclick="showRitual()" class="btn-ghost" style="font-size:0.58rem;">BACK</button>
+    </div>
+    <div class="sys-label">// MANAGER HAT — MILESTONE MAP</div>
+    <hr class="divider">
+    <p id="milestones-loading" class="loading-text">LOADING</p>
+    <div id="milestones-grid" class="hidden"></div>
+</div>
 
-        // ---------------------------------------------------------------------------
-        // Authenticated fetch wrapper
-        // ---------------------------------------------------------------------------
-        async function apiFetch(url, options = {}) {
-            const headers = { 'Content-Type': 'application/json', ...options.headers };
-            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-            const res = await fetch(url, { ...options, headers });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
-                throw new Error(err.detail || `HTTP ${res.status}`);
-            }
-            return res.json();
-        }
+<!-- ═══════════════════  FACTS  ══════════════════ -->
+<div id="screen-facts" class="panel hidden" style="max-width:580px;">
+    <div class="sys-bar">
+        <span><span class="sys-dot"></span>MEM::FACTS</span>
+        <span id="clock-facts">--:--:--</span>
+        <button onclick="showRitual()" class="btn-ghost" style="font-size:0.58rem;">BACK</button>
+    </div>
+    <div class="sys-label">// WHAT THE SYSTEM KNOWS</div>
+    <hr class="divider">
+    <p id="facts-loading" class="loading-text">LOADING</p>
+    <p id="facts-empty" class="hidden empty-text">NOTHING YET. KEEP JOURNALING.</p>
+    <ul id="facts-list" class="hidden"></ul>
+</div>
 
-        // ---------------------------------------------------------------------------
-        // Char counter
-        // ---------------------------------------------------------------------------
-        document.getElementById('journal-input').addEventListener('input', function () {
-            document.getElementById('char-count').textContent = `${this.value.length.toLocaleString()} / 10,000`;
+<!-- ═══════════════════  PILLAR MAP  ═════════════ -->
+<div id="screen-map" class="panel hidden" style="max-width:780px;width:100%;">
+    <div class="sys-bar">
+        <span><span class="sys-dot"></span>MAP::LOADED</span>
+        <span>ARCHITECTURE SCAN</span>
+        <button onclick="showRitual()" class="btn-ghost" style="font-size:0.58rem;">BACK</button>
+    </div>
+    <div class="sys-label">// PILLAR ARCHITECTURE</div>
+    <hr class="divider">
+    <div id="pillars-grid"></div>
+</div>
+
+<script>
+/* ── MATRIX RAIN ── */
+(function () {
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+    const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$@#%&*<>[]{}';
+    let cols, drops;
+    function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+        cols  = Math.floor(canvas.width / 18);
+        drops = Array(cols).fill(1);
+    }
+    function draw() {
+        ctx.fillStyle = 'rgba(0,3,0,0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drops.forEach((y, i) => {
+            const x = i * 18;
+            ctx.fillStyle = '#aaffbb';
+            ctx.font = '15px Share Tech Mono, monospace';
+            ctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y * 18);
+            ctx.fillStyle = '#00ff41';
+            ctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, (y - 1) * 18);
+            if (y * 18 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
         });
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    setInterval(draw, 50);
+})();
 
-        // ---------------------------------------------------------------------------
-        // Auth
-        // ---------------------------------------------------------------------------
-        async function login() {
-            const email = document.getElementById('email-input').value.trim();
-            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                showToast('Enter a valid email address.', true);
-                return;
-            }
+/* ── CLOCK ── */
+function updateClock() {
+    const t = new Date().toLocaleTimeString('en-GB');
+    ['clock-display','ritual-clock','clock-onboard','clock-midday','clock-review','clock-monthly','clock-facts']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = t; });
+}
+setInterval(updateClock, 1000);
+updateClock();
 
-            const btn = document.getElementById('login-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span>';
+/* ── PILL EFFECTS ── */
+function bluePill(btn) {
+    btn.style.background    = '#1a4fff';
+    btn.style.borderColor   = '#1a4fff';
+    btn.style.color         = '#fff';
+    btn.style.boxShadow     = '0 0 30px rgba(26,79,255,0.7)';
+    setTimeout(() => window.close(), 350);
+}
 
-            try {
-                const data = await apiFetch('/auth/login', {
-                    method: 'POST',
-                    body: JSON.stringify({ email, name: email.split('@')[0] }),
-                });
-                authToken = data.token;
-                userId    = data.user_id;
-                sessionStorage.setItem('architect_token', authToken);
-                sessionStorage.setItem('architect_user_id', userId);
-                if (!data.has_onboarded) {
-                    showOnboarding();
-                } else {
-                    await showRitual();
-                }
-            } catch (e) {
-                showToast(e.message, true);
-                btn.disabled = false;
-                btn.textContent = 'Begin Journey';
-            }
-        }
+/* ── SESSION STATE ── */
+let authToken = sessionStorage.getItem('architect_token');
+let userId    = sessionStorage.getItem('architect_user_id');
 
-        // ---------------------------------------------------------------------------
-        // Screens
-        // ---------------------------------------------------------------------------
-        function hideAll() {
-            ['screen-login','screen-onboard','screen-midday','screen-ritual','screen-map','screen-review','screen-monthly','screen-milestones','screen-facts','morning-view','evening-view']
-                .forEach(id => document.getElementById(id).classList.add('hidden'));
-        }
+/* ── TOAST ── */
+let toastTimer = null;
+function showToast(msg, isError = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.toggle('error', isError);
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
 
-        let currentSeedQuestion = '';
+/* ── AUTHENTICATED FETCH ── */
+async function apiFetch(url, options = {}) {
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const res = await fetch(url, { ...options, headers });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+}
 
-        async function showRitual() {
-            if (!authToken) { showLoginScreen(); return; }
-            hideAll();
-            document.getElementById('screen-ritual').classList.remove('hidden');
+/* ── CHAR COUNTERS ── */
+document.getElementById('journal-input').addEventListener('input', function () {
+    document.getElementById('char-count').textContent = `${this.value.length.toLocaleString()} / 10,000`;
+});
+document.getElementById('spark-input').addEventListener('input', function () {
+    document.getElementById('spark-char-count').textContent = String(this.value.length).padStart(4, '0');
+});
 
-            const msgEl = document.getElementById('morning-message');
-            msgEl.textContent = 'Loading your story...';
-            document.getElementById('morning-view').classList.remove('hidden');
-
-            try {
-                const data = await apiFetch('/ritual/morning');
-                msgEl.textContent = `"${data.message}"`;
-                currentSeedQuestion = data.seed_question || '';
-
-                const directiveEl = document.getElementById('morning-directive');
-                if (data.directive) {
-                    directiveEl.textContent = data.directive;
-                    directiveEl.classList.remove('hidden');
-                } else {
-                    directiveEl.classList.add('hidden');
-                }
-
-                const statsEl = document.getElementById('morning-stats');
-                if (data.total_entries > 0) {
-                    document.getElementById('stat-streak').textContent =
-                        data.streak === 1 ? '1-day streak' :
-                        data.streak > 1  ? `${data.streak}-day streak` : 'No streak yet';
-                    document.getElementById('stat-total').textContent =
-                        `${data.total_entries} ${data.total_entries === 1 ? 'session' : 'sessions'} total`;
-                    statsEl.classList.remove('hidden');
-                    statsEl.classList.add('flex');
-                } else {
-                    statsEl.classList.add('hidden');
-                }
-            } catch (e) {
-                msgEl.textContent = 'Could not load your ritual. Try again shortly.';
-                showToast(e.message, true);
-            }
-        }
-
-        function showLoginScreen() {
-            hideAll();
-            document.getElementById('screen-login').classList.remove('hidden');
-        }
-
-        async function showMidday() {
-            if (!authToken) { showLoginScreen(); return; }
-            hideAll();
-            document.getElementById('screen-midday').classList.remove('hidden');
-            document.getElementById('midday-challenge').textContent = '';
-            document.getElementById('midday-pillar').textContent = '';
-
-            try {
-                const data = await apiFetch('/ritual/midday');
-                document.getElementById('midday-pillar').textContent = data.pillar;
-                document.getElementById('midday-challenge').textContent = data.challenge;
-            } catch (e) {
-                showToast(e.message, true);
-                showRitual();
-            }
-        }
-
-        function showOnboarding() {
-            hideAll();
-            document.getElementById('screen-onboard').classList.remove('hidden');
-            document.getElementById('spark-input').value = '';
-            document.getElementById('spark-char-count').textContent = '0 / 2,000';
-        }
-
-        document.getElementById('spark-input').addEventListener('input', function () {
-            document.getElementById('spark-char-count').textContent = `${this.value.length.toLocaleString()} / 2,000`;
+/* ── AUTH ── */
+async function login() {
+    const email = document.getElementById('email-input').value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Enter a valid email address.', true);
+        return;
+    }
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    try {
+        const data = await apiFetch('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, name: email.split('@')[0] }),
         });
+        authToken = data.token;
+        userId    = data.user_id;
+        sessionStorage.setItem('architect_token', authToken);
+        sessionStorage.setItem('architect_user_id', userId);
+        const uidEl = document.getElementById('uid-display');
+        if (uidEl) uidEl.textContent = String(userId).padStart(6, '0').slice(-6);
+        if (!data.has_onboarded) {
+            showOnboarding();
+        } else {
+            await showRitual();
+        }
+    } catch (e) {
+        showToast(e.message, true);
+        btn.disabled = false;
+        btn.textContent = 'TAKE THE RED PILL';
+    }
+}
 
-        async function submitSpark() {
-            const spark = document.getElementById('spark-input').value.trim();
-            if (!spark) { showToast('Write something first.', true); return; }
+/* ── SCREENS ── */
+function hideAll() {
+    ['screen-login','screen-onboard','screen-midday','screen-ritual','screen-map',
+     'screen-review','screen-monthly','screen-milestones','screen-facts',
+     'morning-view','evening-view']
+        .forEach(id => document.getElementById(id).classList.add('hidden'));
+}
 
-            const btn = document.getElementById('spark-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Processing...';
+let currentSeedQuestion = '';
 
-            try {
-                await apiFetch('/user/onboard', {
-                    method: 'POST',
-                    body: JSON.stringify({ spark }),
-                });
-                await showRitual();
-            } catch (e) {
-                showToast(e.message, true);
-                btn.disabled = false;
-                btn.textContent = 'Begin';
+async function showRitual() {
+    if (!authToken) { showLoginScreen(); return; }
+    hideAll();
+    document.getElementById('screen-ritual').classList.remove('hidden');
+
+    const msgEl = document.getElementById('morning-message');
+    msgEl.textContent = '"LOADING YOUR STORY..."';
+    document.getElementById('morning-view').classList.remove('hidden');
+
+    try {
+        const data = await apiFetch('/ritual/morning');
+        msgEl.textContent = `"${data.message}"`;
+        currentSeedQuestion = data.seed_question || '';
+
+        const directiveEl = document.getElementById('morning-directive');
+        if (data.directive) {
+            directiveEl.textContent = data.directive;
+            directiveEl.classList.remove('hidden');
+        } else {
+            directiveEl.classList.add('hidden');
+        }
+
+        const statsEl = document.getElementById('morning-stats');
+        if (data.total_entries > 0) {
+            statsEl.innerHTML =
+                `<span>${data.streak === 1 ? '1-day streak' : data.streak > 1 ? `${data.streak}-day streak` : 'No streak yet'}</span>` +
+                `<span style="color:var(--border-hi);">·</span>` +
+                `<span>${data.total_entries} ${data.total_entries === 1 ? 'session' : 'sessions'} total</span>`;
+            statsEl.classList.remove('hidden');
+        } else {
+            statsEl.classList.add('hidden');
+        }
+    } catch (e) {
+        msgEl.textContent = 'COULD NOT LOAD RITUAL. TRY AGAIN SHORTLY.';
+        showToast(e.message, true);
+    }
+}
+
+function showLoginScreen() {
+    hideAll();
+    document.getElementById('screen-login').classList.remove('hidden');
+}
+
+async function showMidday() {
+    if (!authToken) { showLoginScreen(); return; }
+    hideAll();
+    document.getElementById('screen-midday').classList.remove('hidden');
+    document.getElementById('midday-challenge').textContent = '';
+    document.getElementById('midday-pillar').textContent = '';
+    try {
+        const data = await apiFetch('/ritual/midday');
+        document.getElementById('midday-pillar').textContent = data.pillar;
+        document.getElementById('midday-challenge').textContent = data.challenge;
+    } catch (e) {
+        showToast(e.message, true);
+        showRitual();
+    }
+}
+
+function showOnboarding() {
+    hideAll();
+    document.getElementById('screen-onboard').classList.remove('hidden');
+    document.getElementById('spark-input').value = '';
+    document.getElementById('spark-char-count').textContent = '0000';
+}
+
+async function submitSpark() {
+    const spark = document.getElementById('spark-input').value.trim();
+    if (!spark) { showToast('Write something first.', true); return; }
+    const btn = document.getElementById('spark-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    try {
+        await apiFetch('/user/onboard', { method: 'POST', body: JSON.stringify({ spark }) });
+        await showRitual();
+    } catch (e) {
+        showToast(e.message, true);
+        btn.disabled = false;
+        btn.textContent = 'BEGIN';
+    }
+}
+
+function showEvening() {
+    document.getElementById('morning-view').classList.add('hidden');
+    document.getElementById('evening-view').classList.remove('hidden');
+    document.getElementById('seed-question').textContent = currentSeedQuestion;
+    document.getElementById('journal-input').value = '';
+    document.getElementById('char-count').textContent = '0 / 10,000';
+}
+
+async function submitJournal() {
+    const content = document.getElementById('journal-input').value.trim();
+    if (!content) { showToast('Write something first.', true); return; }
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    try {
+        await apiFetch('/ritual/evening', { method: 'POST', body: JSON.stringify({ content }) });
+        showToast('// TRANSMISSION COMPLETE. SEE YOU AT DAWN.');
+        await showRitual();
+    } catch (e) {
+        showToast(e.message, true);
+        btn.disabled = false;
+        btn.textContent = 'TRANSMIT';
+    }
+}
+
+async function showMap() {
+    if (!authToken) { showLoginScreen(); return; }
+    hideAll();
+    document.getElementById('screen-map').classList.remove('hidden');
+    const grid = document.getElementById('pillars-grid');
+    grid.textContent = '';
+    try {
+        const pillars = await apiFetch('/user/pillars');
+        pillars.forEach(p => {
+            const card = document.createElement('div');
+            const isMoving = p.status === 'Moving';
+            let urgency = '';
+            if (!isMoving) {
+                urgency = p.days_in_state < 7 ? 'paused-warn' : p.days_in_state < 14 ? 'paused-alert' : 'paused-danger';
             }
+            card.className = `pillar-card ${isMoving ? 'moving' : urgency}`;
+
+            const name = document.createElement('div');
+            name.className = 'sys-label pillar-name';
+            name.textContent = p.name.toUpperCase();
+
+            const status = document.createElement('span');
+            status.className = `pillar-status ${isMoving ? 'status-moving' : 'status-paused'}`;
+            status.textContent = isMoving ? '◆ ACTIVE' : '○ IDLE';
+
+            const days = document.createElement('div');
+            days.className = 'pillar-days';
+            days.textContent = p.days_in_state === 0 ? 'SINCE TODAY' : `${p.days_in_state}D IN THIS STATE`;
+
+            card.appendChild(name);
+            card.appendChild(status);
+            card.appendChild(days);
+            grid.appendChild(card);
+        });
+    } catch (e) {
+        showToast(e.message, true);
+    }
+}
+
+async function showWeeklyReview() {
+    if (!authToken) { showLoginScreen(); return; }
+    hideAll();
+    document.getElementById('screen-review').classList.remove('hidden');
+    document.getElementById('review-loading').classList.remove('hidden');
+    document.getElementById('review-content').classList.add('hidden');
+    try {
+        const data = await apiFetch('/ritual/weekly');
+        const movedEl = document.getElementById('review-moved');
+        movedEl.textContent = '';
+        data.moved.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            movedEl.appendChild(li);
+        });
+        const stalledEl = document.getElementById('review-stalled');
+        stalledEl.textContent = '';
+        data.stalled.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'dim';
+            li.textContent = item;
+            stalledEl.appendChild(li);
+        });
+        document.getElementById('review-pattern').textContent = data.pattern;
+        document.getElementById('review-directive').textContent = data.directive;
+        document.getElementById('review-meta').textContent =
+            `// BASED ON ${data.entries_this_week} JOURNAL ${data.entries_this_week === 1 ? 'ENTRY' : 'ENTRIES'} THIS WEEK`;
+        document.getElementById('review-loading').classList.add('hidden');
+        document.getElementById('review-content').classList.remove('hidden');
+    } catch (e) {
+        showToast(e.message, true);
+        showRitual();
+    }
+}
+
+async function showMonthlyReview() {
+    if (!authToken) { showLoginScreen(); return; }
+    hideAll();
+    document.getElementById('screen-monthly').classList.remove('hidden');
+    document.getElementById('monthly-loading').classList.remove('hidden');
+    document.getElementById('monthly-content').classList.add('hidden');
+    try {
+        const data = await apiFetch('/ritual/monthly');
+        const movedEl = document.getElementById('monthly-moved');
+        movedEl.textContent = '';
+        data.pillars_moved.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            movedEl.appendChild(li);
+        });
+        const neglectedEl = document.getElementById('monthly-neglected');
+        neglectedEl.textContent = '';
+        data.pillars_neglected.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'dim';
+            li.textContent = item;
+            neglectedEl.appendChild(li);
+        });
+        document.getElementById('monthly-blind-spot').textContent = data.blind_spot;
+        document.getElementById('monthly-decision').textContent = data.architectural_decision;
+        document.getElementById('monthly-meta').textContent =
+            `// BASED ON ${data.entries_this_month} JOURNAL ${data.entries_this_month === 1 ? 'ENTRY' : 'ENTRIES'} THIS MONTH`;
+        document.getElementById('monthly-loading').classList.add('hidden');
+        document.getElementById('monthly-content').classList.remove('hidden');
+    } catch (e) {
+        showToast(e.message, true);
+        showRitual();
+    }
+}
+
+async function showMilestones() {
+    if (!authToken) { showLoginScreen(); return; }
+    hideAll();
+    document.getElementById('screen-milestones').classList.remove('hidden');
+    document.getElementById('milestones-loading').classList.remove('hidden');
+    document.getElementById('milestones-grid').classList.add('hidden');
+    try {
+        const pillars = await apiFetch('/user/milestones');
+        const dates = [];
+        for (let i = 27; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            dates.push(d.toISOString().slice(0, 10));
         }
-
-        function showEvening() {
-            document.getElementById('morning-view').classList.add('hidden');
-            document.getElementById('evening-view').classList.remove('hidden');
-            document.getElementById('seed-question').textContent = currentSeedQuestion;
-            document.getElementById('journal-input').value = '';
-            document.getElementById('char-count').textContent = '0 / 10,000';
-        }
-
-        async function submitJournal() {
-            const content = document.getElementById('journal-input').value.trim();
-            if (!content) { showToast('Write something first.', true); return; }
-
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Saving...';
-
-            try {
-                await apiFetch('/ritual/evening', {
-                    method: 'POST',
-                    body: JSON.stringify({ content }),
-                });
-                showToast('Journal saved. See you in the morning.');
-                await showRitual();
-            } catch (e) {
-                showToast(e.message, true);
-                btn.disabled = false;
-                btn.textContent = 'Submit';
-            }
-        }
-
-        async function showMap() {
-            if (!authToken) { showLoginScreen(); return; }
-            hideAll();
-            document.getElementById('screen-map').classList.remove('hidden');
-
-            const grid = document.getElementById('pillars-grid');
-            grid.textContent = '';
-
-            try {
-                const pillars = await apiFetch('/user/pillars');
-                pillars.forEach(p => {
-                    const card = document.createElement('div');
-                    const isMoving = p.status === 'Moving';
-
-                    // Urgency colour: green=Moving, yellow=Paused<7d, orange=7-14d, red=14+d
-                    let statusColor, borderClass;
-                    if (isMoving) {
-                        statusColor = 'text-green-400';
-                        borderClass = 'border-white';
-                    } else if (p.days_in_state < 7) {
-                        statusColor = 'text-yellow-400';
-                        borderClass = 'border-yellow-900';
-                    } else if (p.days_in_state < 14) {
-                        statusColor = 'text-orange-400';
-                        borderClass = 'border-orange-900';
-                    } else {
-                        statusColor = 'text-red-400';
-                        borderClass = 'border-red-900';
-                    }
-
-                    card.className = `pillar-card glass p-8 rounded-3xl text-center ${borderClass}`;
-
-                    const title = document.createElement('h3');
-                    title.className = 'text-xl font-bold mb-2';
-                    title.textContent = p.name;
-
-                    const badge = document.createElement('span');
-                    badge.className = `text-xs uppercase tracking-widest ${statusColor} block mb-1`;
-                    badge.textContent = p.status;
-
-                    const days = document.createElement('span');
-                    days.className = 'text-xs text-gray-600';
-                    days.textContent = p.days_in_state === 0
-                        ? 'since today'
-                        : `${p.days_in_state}d in this state`;
-
-                    card.appendChild(title);
-                    card.appendChild(badge);
-                    card.appendChild(days);
-                    grid.appendChild(card);
-                });
-            } catch (e) {
-                showToast(e.message, true);
-            }
-        }
-
-        async function showWeeklyReview() {
-            if (!authToken) { showLoginScreen(); return; }
-            hideAll();
-            document.getElementById('screen-review').classList.remove('hidden');
-            document.getElementById('review-loading').classList.remove('hidden');
-            document.getElementById('review-content').classList.add('hidden');
-
-            try {
-                const data = await apiFetch('/ritual/weekly');
-
-                // Populate moved
-                const movedEl = document.getElementById('review-moved');
-                movedEl.textContent = '';
-                data.moved.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'text-gray-300 pl-4 border-l border-green-800';
-                    li.textContent = item;
-                    movedEl.appendChild(li);
-                });
-
-                // Populate stalled
-                const stalledEl = document.getElementById('review-stalled');
-                stalledEl.textContent = '';
-                data.stalled.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'text-gray-400 pl-4 border-l border-gray-700';
-                    li.textContent = item;
-                    stalledEl.appendChild(li);
-                });
-
-                document.getElementById('review-pattern').textContent = data.pattern;
-                document.getElementById('review-directive').textContent = data.directive;
-                document.getElementById('review-meta').textContent =
-                    `Based on ${data.entries_this_week} journal ${data.entries_this_week === 1 ? 'entry' : 'entries'} this week`;
-
-                document.getElementById('review-loading').classList.add('hidden');
-                document.getElementById('review-content').classList.remove('hidden');
-            } catch (e) {
-                showToast(e.message, true);
-                showRitual();
-            }
-        }
-
-
-        async function showMonthlyReview() {
-            if (!authToken) { showLoginScreen(); return; }
-            hideAll();
-            document.getElementById('screen-monthly').classList.remove('hidden');
-            document.getElementById('monthly-loading').classList.remove('hidden');
-            document.getElementById('monthly-content').classList.add('hidden');
-
-            try {
-                const data = await apiFetch('/ritual/monthly');
-
-                const movedEl = document.getElementById('monthly-moved');
-                movedEl.textContent = '';
-                data.pillars_moved.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'text-gray-300 pl-4 border-l border-green-800';
-                    li.textContent = item;
-                    movedEl.appendChild(li);
-                });
-
-                const neglectedEl = document.getElementById('monthly-neglected');
-                neglectedEl.textContent = '';
-                data.pillars_neglected.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'text-gray-400 pl-4 border-l border-red-900';
-                    li.textContent = item;
-                    neglectedEl.appendChild(li);
-                });
-
-                document.getElementById('monthly-blind-spot').textContent = data.blind_spot;
-                document.getElementById('monthly-decision').textContent = data.architectural_decision;
-                document.getElementById('monthly-meta').textContent =
-                    `Based on ${data.entries_this_month} journal ${data.entries_this_month === 1 ? 'entry' : 'entries'} this month`;
-
-                document.getElementById('monthly-loading').classList.add('hidden');
-                document.getElementById('monthly-content').classList.remove('hidden');
-            } catch (e) {
-                showToast(e.message, true);
-                showRitual();
-            }
-        }
-
-        async function showMilestones() {
-            if (!authToken) { showLoginScreen(); return; }
-            hideAll();
-            document.getElementById('screen-milestones').classList.remove('hidden');
-            document.getElementById('milestones-loading').classList.remove('hidden');
-            document.getElementById('milestones-grid').classList.add('hidden');
-
-            try {
-                const pillars = await apiFetch('/user/milestones');
-
-                // Build 28-day date array (oldest → newest)
-                const dates = [];
-                for (let i = 27; i >= 0; i--) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    dates.push(d.toISOString().slice(0, 10));
-                }
-
-                const grid = document.getElementById('milestones-grid');
-                grid.textContent = '';
-
-                pillars.forEach(p => {
-                    const entryMap = {};
-                    p.entries.forEach(e => { entryMap[e.date] = e.momentum; });
-
-                    const row = document.createElement('div');
-                    row.className = 'flex items-center gap-3';
-
-                    const label = document.createElement('div');
-                    label.className = 'w-36 shrink-0';
-
-                    const name = document.createElement('p');
-                    name.className = 'text-sm font-semibold text-gray-300 truncate';
-                    name.textContent = p.name;
-
-                    const badge = document.createElement('p');
-                    const isMoving = p.status === 'Moving';
-                    badge.className = `text-xs ${isMoving ? 'text-green-500' : 'text-gray-600'}`;
-                    badge.textContent = `${p.status} · ${p.days_in_state}d`;
-
-                    label.appendChild(name);
-                    label.appendChild(badge);
-
-                    const dotsWrap = document.createElement('div');
-                    dotsWrap.className = 'flex gap-1 flex-wrap';
-
-                    dates.forEach(date => {
-                        const dot = document.createElement('div');
-                        dot.style.cssText = 'width:10px;height:10px;border-radius:2px;flex-shrink:0;';
-                        const momentum = entryMap[date];
-                        if (!momentum) {
-                            dot.style.background = '#1a1a1a';
-                        } else if (momentum === 'Moving') {
-                            dot.style.background = '#22c55e';
-                        } else {
-                            dot.style.background = '#ef4444';
-                        }
-                        dot.title = momentum ? `${date}: ${momentum}` : date;
-                        dotsWrap.appendChild(dot);
-                    });
-
-                    row.appendChild(label);
-                    row.appendChild(dotsWrap);
-                    grid.appendChild(row);
-                });
-
-                document.getElementById('milestones-loading').classList.add('hidden');
-                grid.classList.remove('hidden');
-            } catch (e) {
-                showToast(e.message, true);
-                showRitual();
-            }
-        }
-
-        async function showFacts() {
-            if (!authToken) { showLoginScreen(); return; }
-            hideAll();
-            document.getElementById('screen-facts').classList.remove('hidden');
-            document.getElementById('facts-loading').classList.remove('hidden');
-            document.getElementById('facts-empty').classList.add('hidden');
-            document.getElementById('facts-list').classList.add('hidden');
-
-            try {
-                const facts = await apiFetch('/user/facts');
-
-                document.getElementById('facts-loading').classList.add('hidden');
-
-                if (facts.length === 0) {
-                    document.getElementById('facts-empty').classList.remove('hidden');
-                    return;
-                }
-
-                const list = document.getElementById('facts-list');
-                list.textContent = '';
-                facts.forEach(f => {
-                    const li = document.createElement('li');
-                    li.id = `fact-${f.id}`;
-                    li.className = 'flex items-start justify-between gap-4 glass p-4 rounded-xl';
-
-                    const text = document.createElement('span');
-                    text.className = 'text-gray-300 text-sm leading-relaxed';
-                    text.textContent = f.content;
-
-                    const meta = document.createElement('div');
-                    meta.className = 'flex flex-col items-end gap-2 shrink-0';
-
-                    const date = document.createElement('span');
-                    date.className = 'text-xs text-gray-600 whitespace-nowrap';
-                    date.textContent = f.created_at;
-
-                    const del = document.createElement('button');
-                    del.className = 'text-xs text-gray-600 hover:text-red-400 transition';
-                    del.textContent = 'Delete';
-                    del.onclick = () => deleteFact(f.id);
-
-                    meta.appendChild(date);
-                    meta.appendChild(del);
-                    li.appendChild(text);
-                    li.appendChild(meta);
-                    list.appendChild(li);
-                });
-
-                list.classList.remove('hidden');
-            } catch (e) {
-                showToast(e.message, true);
-                showRitual();
-            }
-        }
-
-        async function deleteFact(id) {
-            try {
-                await apiFetch(`/user/facts/${id}`, { method: 'DELETE' });
-                const el = document.getElementById(`fact-${id}`);
-                if (el) el.remove();
-                const list = document.getElementById('facts-list');
-                if (list.children.length === 0) {
-                    list.classList.add('hidden');
-                    document.getElementById('facts-empty').classList.remove('hidden');
-                }
-            } catch (e) {
-                showToast(e.message, true);
-            }
-        }
-
-        // ---------------------------------------------------------------------------
-        // Matrix boot sequence
-        // ---------------------------------------------------------------------------
-        const _sleep = ms => new Promise(r => setTimeout(r, ms));
-
-        async function typeLine(el, text, speed = 18) {
-            el.classList.add('matrix-cursor');
-            for (const ch of text) {
-                el.textContent += ch;
-                await _sleep(speed + Math.random() * 10);
-            }
-            el.classList.remove('matrix-cursor');
-        }
-
-        async function typeBar(container, label) {
-            const p = document.createElement('p');
-            p.className = 'matrix-line';
-            container.appendChild(p);
-            const pad = label.padEnd(18);
-            const total = 20;
-            p.textContent = `  ${pad}[                    ]   0%`;
-            for (let i = 1; i <= total; i++) {
-                await _sleep(28);
-                const filled = '█'.repeat(i) + ' '.repeat(total - i);
-                const pct = String(Math.round((i / total) * 100)).padStart(3);
-                p.textContent = `  ${pad}[${filled}] ${pct}%`;
-            }
-            p.classList.add('matrix-dim');
-            p.textContent = `  ${pad}[████████████████████] OK `;
-        }
-
-        async function runBootSequence() {
-            const container = document.getElementById('boot-lines');
-            container.innerHTML = '';
-
-            const addLine = (text = '', dim = false) => {
-                const p = document.createElement('p');
-                p.className = 'matrix-line' + (dim ? ' matrix-dim' : '');
-                p.textContent = text;
-                container.appendChild(p);
-                return p;
-            };
-
-            const type = async (text, speed) => {
-                const p = document.createElement('p');
-                p.className = 'matrix-line';
-                container.appendChild(p);
-                await typeLine(p, text, speed);
-            };
-
-            await type('> INITIALIZING THE ARCHITECT...', 22);
-            await _sleep(180);
-            addLine();
-            await type('> SCANNING LIFE DIMENSIONS...', 22);
-            await _sleep(120);
-            addLine();
-
-            const pillars = ['SOCIAL','FINANCIAL','SPIRITUAL','CRAFT/CAREER','EMOTIONAL','INTELLECTUAL','LEGACY'];
-            for (const p of pillars) await typeBar(container, p);
-
-            await _sleep(200);
-            addLine();
-            await type('> ALL SYSTEMS ONLINE.', 22);
-            await _sleep(120);
-            await type('> IDENTITY REQUIRED TO PROCEED.', 22);
-            await _sleep(500);
-
-            finishBoot();
-        }
-
-        function finishBoot() {
-            const boot = document.getElementById('screen-boot');
-            const skip = document.getElementById('boot-skip');
-            boot.classList.add('fade-out');
-            skip.style.display = 'none';
-            setTimeout(() => {
-                boot.style.display = 'none';
-                if (authToken) {
-                    showRitual();
+        const grid = document.getElementById('milestones-grid');
+        grid.textContent = '';
+        pillars.forEach(p => {
+            const entryMap = {};
+            p.entries.forEach(e => { entryMap[e.date] = e.momentum; });
+            const row = document.createElement('div');
+            row.className = 'milestone-row';
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'milestone-label';
+            const name = document.createElement('p');
+            name.className = 'milestone-name';
+            name.textContent = p.name.toUpperCase();
+            const badge = document.createElement('p');
+            badge.className = 'milestone-badge';
+            badge.textContent = `${p.status.toUpperCase()} · ${p.days_in_state}D`;
+            if (p.status === 'Moving') badge.style.color = 'var(--green)';
+            labelDiv.appendChild(name);
+            labelDiv.appendChild(badge);
+            const dotsWrap = document.createElement('div');
+            dotsWrap.className = 'dots-wrap';
+            dates.forEach(date => {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                const momentum = entryMap[date];
+                if (!momentum) {
+                    dot.style.background = 'rgba(0,255,65,0.05)';
+                    dot.style.border = '1px solid rgba(0,255,65,0.1)';
+                } else if (momentum === 'Moving') {
+                    dot.style.background = 'var(--green)';
+                    dot.style.boxShadow = '0 0 4px rgba(0,255,65,0.4)';
                 } else {
-                    showLoginScreen();
+                    dot.style.background = 'var(--red)';
+                    dot.style.boxShadow = '0 0 4px rgba(255,32,32,0.3)';
                 }
-            }, 800);
-        }
+                dot.title = momentum ? `${date}: ${momentum}` : date;
+                dotsWrap.appendChild(dot);
+            });
+            row.appendChild(labelDiv);
+            row.appendChild(dotsWrap);
+            grid.appendChild(row);
+        });
+        document.getElementById('milestones-loading').classList.add('hidden');
+        grid.classList.remove('hidden');
+    } catch (e) {
+        showToast(e.message, true);
+        showRitual();
+    }
+}
 
-        // ---------------------------------------------------------------------------
-        // Boot: run matrix sequence first (skip if already logged in and on mobile)
-        // ---------------------------------------------------------------------------
-        (function boot() {
-            runBootSequence();
-        })();
-    </script>
+async function showFacts() {
+    if (!authToken) { showLoginScreen(); return; }
+    hideAll();
+    document.getElementById('screen-facts').classList.remove('hidden');
+    document.getElementById('facts-loading').classList.remove('hidden');
+    document.getElementById('facts-empty').classList.add('hidden');
+    document.getElementById('facts-list').classList.add('hidden');
+    try {
+        const facts = await apiFetch('/user/facts');
+        document.getElementById('facts-loading').classList.add('hidden');
+        if (facts.length === 0) {
+            document.getElementById('facts-empty').classList.remove('hidden');
+            return;
+        }
+        const list = document.getElementById('facts-list');
+        list.textContent = '';
+        facts.forEach(f => {
+            const li = document.createElement('li');
+            li.id = `fact-${f.id}`;
+            li.className = 'fact-item';
+            const text = document.createElement('span');
+            text.className = 'fact-text';
+            text.textContent = f.content;
+            const meta = document.createElement('div');
+            meta.className = 'fact-meta';
+            const date = document.createElement('span');
+            date.className = 'fact-date';
+            date.textContent = f.created_at;
+            const del = document.createElement('button');
+            del.className = 'fact-del';
+            del.textContent = '[ DELETE ]';
+            del.onclick = () => deleteFact(f.id);
+            meta.appendChild(date);
+            meta.appendChild(del);
+            li.appendChild(text);
+            li.appendChild(meta);
+            list.appendChild(li);
+        });
+        list.classList.remove('hidden');
+    } catch (e) {
+        showToast(e.message, true);
+        showRitual();
+    }
+}
+
+async function deleteFact(id) {
+    try {
+        await apiFetch(`/user/facts/${id}`, { method: 'DELETE' });
+        const el = document.getElementById(`fact-${id}`);
+        if (el) el.remove();
+        const list = document.getElementById('facts-list');
+        if (list.children.length === 0) {
+            list.classList.add('hidden');
+            document.getElementById('facts-empty').classList.remove('hidden');
+        }
+    } catch (e) {
+        showToast(e.message, true);
+    }
+}
+
+/* ── BOOT SEQUENCE ── */
+const _sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function typeLine(el, text, speed = 18) {
+    el.classList.add('matrix-cursor');
+    for (const ch of text) {
+        el.textContent += ch;
+        await _sleep(speed + Math.random() * 10);
+    }
+    el.classList.remove('matrix-cursor');
+}
+
+async function typeBar(container, label) {
+    const p = document.createElement('p');
+    p.className = 'matrix-line';
+    container.appendChild(p);
+    const pad = label.padEnd(18);
+    const total = 20;
+    p.textContent = `  ${pad}[                    ]   0%`;
+    for (let i = 1; i <= total; i++) {
+        await _sleep(28);
+        const filled = '█'.repeat(i) + ' '.repeat(total - i);
+        const pct = String(Math.round((i / total) * 100)).padStart(3);
+        p.textContent = `  ${pad}[${filled}] ${pct}%`;
+    }
+    p.classList.add('matrix-dim');
+    p.textContent = `  ${pad}[████████████████████] OK `;
+}
+
+async function runBootSequence() {
+    const container = document.getElementById('boot-lines');
+    container.innerHTML = '';
+
+    const addLine = (text = '', dim = false) => {
+        const p = document.createElement('p');
+        p.className = 'matrix-line' + (dim ? ' matrix-dim' : '');
+        p.textContent = text;
+        container.appendChild(p);
+        return p;
+    };
+    const type = async (text, speed) => {
+        const p = document.createElement('p');
+        p.className = 'matrix-line';
+        container.appendChild(p);
+        await typeLine(p, text, speed);
+    };
+
+    await type('> INITIALIZING THE ARCHITECT...', 22);
+    await _sleep(180);
+    addLine();
+    await type('> SCANNING LIFE DIMENSIONS...', 22);
+    await _sleep(120);
+    addLine();
+
+    const pillars = ['SOCIAL','FINANCIAL','SPIRITUAL','CRAFT/CAREER','EMOTIONAL','INTELLECTUAL','LEGACY'];
+    for (const p of pillars) await typeBar(container, p);
+
+    await _sleep(200);
+    addLine();
+    await type('> ALL SYSTEMS ONLINE.', 22);
+    await _sleep(120);
+    await type('> IDENTITY REQUIRED TO PROCEED.', 22);
+    await _sleep(500);
+    finishBoot();
+}
+
+function finishBoot() {
+    const boot = document.getElementById('screen-boot');
+    boot.classList.add('fade-out');
+    setTimeout(() => {
+        boot.style.display = 'none';
+        if (authToken) showRitual();
+        else showLoginScreen();
+    }, 800);
+}
+
+(function boot() { runBootSequence(); })();
+</script>
 </body>
 </html>
