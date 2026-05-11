@@ -2,8 +2,6 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'web_app'))
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test_architect.db")
-
 import pytest
 from fastapi.testclient import TestClient
 from main import app, _get_seed_question
@@ -177,6 +175,58 @@ def test_submit_journal_too_long_rejected():
     token, _ = _login("toolong@example.com")
     res = client.post("/ritual/evening", json={"content": "x" * 10_001}, headers=auth_headers(token))
     assert res.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Weekly review
+# ---------------------------------------------------------------------------
+
+def test_weekly_review_requires_auth():
+    assert client.get("/ritual/weekly").status_code == 401
+
+
+def test_weekly_review_no_entries_returns_placeholder():
+    token, _ = _login("no_entries_weekly@example.com")
+    res = client.get("/ritual/weekly", headers=auth_headers(token))
+    assert res.status_code == 200
+    data = res.json()
+    assert data["entries_this_week"] == 0
+    assert isinstance(data["moved"], list)
+    assert isinstance(data["stalled"], list)
+    assert isinstance(data["pattern"], str)
+    assert isinstance(data["directive"], str)
+
+
+def test_weekly_review_with_entries():
+    token, _ = _login("has_entries_weekly@example.com")
+    client.post("/ritual/evening",
+                json={"content": "Long day grinding at work but I shipped a feature."},
+                headers=auth_headers(token))
+    client.post("/ritual/evening",
+                json={"content": "Went to the gym and caught up with an old friend."},
+                headers=auth_headers(token))
+
+    res = client.get("/ritual/weekly", headers=auth_headers(token))
+    assert res.status_code == 200
+    data = res.json()
+    assert data["entries_this_week"] == 2
+    assert len(data["moved"]) >= 1
+    assert len(data["stalled"]) >= 1
+    assert len(data["pattern"]) > 10
+    assert len(data["directive"]) > 10
+
+
+def test_weekly_review_response_fields_are_strings():
+    token, _ = _login("field_check_weekly@example.com")
+    client.post("/ritual/evening",
+                json={"content": "Reflected on my goals today."},
+                headers=auth_headers(token))
+    res = client.get("/ritual/weekly", headers=auth_headers(token))
+    data = res.json()
+    assert isinstance(data["pattern"], str)
+    assert isinstance(data["directive"], str)
+    for item in data["moved"] + data["stalled"]:
+        assert isinstance(item, str)
 
 
 # ---------------------------------------------------------------------------

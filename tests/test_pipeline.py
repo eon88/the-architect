@@ -207,6 +207,37 @@ def test_extract_facts_no_crash_on_empty_entry():
     assert isinstance(result, list)
 
 
+def test_generate_weekly_review_returns_required_keys():
+    p = ArchitectPipeline()
+    ctx = make_context()
+    entries = [
+        {"date": "Monday 05 May", "content": "Stressed about bills."},
+        {"date": "Tuesday 06 May", "content": "Had a good workout."},
+    ]
+    result = p.generate_weekly_review(entries, ctx)
+    assert "moved" in result
+    assert "stalled" in result
+    assert "pattern" in result
+    assert "directive" in result
+
+
+def test_generate_weekly_review_no_crash_empty_entries():
+    p = ArchitectPipeline()
+    ctx = make_context(entry_count=0, recent_entries=[], user_facts=[])
+    result = p.generate_weekly_review([], ctx)
+    assert isinstance(result["directive"], str)
+
+
+def test_generate_weekly_review_lists_are_lists():
+    p = ArchitectPipeline()
+    ctx = make_context()
+    result = p.generate_weekly_review(
+        [{"date": "Monday", "content": "I worked on my project all day."}], ctx
+    )
+    assert isinstance(result["moved"], list)
+    assert isinstance(result["stalled"], list)
+
+
 def test_extract_facts_strings_only():
     p = ArchitectPipeline()
     result = p.extract_facts("I am a carpenter building my own house.", [])

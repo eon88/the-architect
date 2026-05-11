@@ -6,7 +6,7 @@ import urllib.error
 from config import GEMINI_API_KEY
 from prompts import (
     PROFILER_PROMPT, STRATEGIST_PROMPT, STORYTELLER_PROMPT,
-    AUDITOR_PROMPT, EXTRACTOR_PROMPT,
+    AUDITOR_PROMPT, EXTRACTOR_PROMPT, WEEKLY_REVIEW_PROMPT,
 )
 from context import UserContext
 
@@ -95,6 +95,13 @@ def _mock_llm(system_prompt: str, user_input: str) -> str:
             return f"Listen. {user_input} Stop worrying about the noise and focus on the work. That's how you win."
         if "Memory Keeper" in first_line:
             return json.dumps({"new_facts": []})
+        if "Manager" in first_line:
+            return json.dumps({
+                "moved": ["You showed up and wrote this week."],
+                "stalled": ["Several pillars remain untouched — no entries, no movement."],
+                "pattern": "You are engaging with the process. The question is whether engagement is translating into real action outside these walls.",
+                "directive": "Pick one paused pillar and take one concrete action on it before this week ends.",
+            })
     except (json.JSONDecodeError, KeyError) as e:
         logger.error("Mock LLM error: %s", e)
     return "Focus on what you can control today. Everything else is noise."
@@ -177,6 +184,27 @@ def _storyteller_input(strategy: dict, ctx: UserContext | None) -> str:
     return base + "\n".join(fact_lines)
 
 
+def _weekly_review_input(entries: list[dict], ctx: UserContext) -> str:
+    lines = ["=== WEEKLY REVIEW CONTEXT ==="]
+    lines.append(f"Total sessions to date: {ctx.entry_count}")
+
+    if ctx.user_facts:
+        lines.append("\nUser facts:")
+        for f in ctx.user_facts:
+            lines.append(f"- {f}")
+
+    if ctx.pillar_states:
+        lines.append("\nPillar states:")
+        for p in sorted(ctx.pillar_states, key=lambda x: x["days_in_state"], reverse=True):
+            lines.append(f"- {p['name']}: {p['status']} ({p['days_in_state']} days)")
+
+    lines.append(f"\n=== JOURNAL ENTRIES THIS WEEK ({len(entries)} entries) ===")
+    for e in entries:
+        lines.append(f"\n[{e['date']}]:\n{e['content']}")
+
+    return "\n".join(lines)
+
+
 def _extractor_input(journal_text: str, existing_facts: list[str]) -> str:
     facts_section = "\n".join(f"- {f}" for f in existing_facts) if existing_facts else "None yet."
     return (
@@ -225,6 +253,30 @@ class ArchitectPipeline:
             "pillar": profile.get("pillar", "Social"),
             "momentum": strategy.get("momentum", "Paused"),
         }
+
+    def generate_weekly_review(self, entries: list[dict], ctx: UserContext) -> dict:
+        logger.info("Generating weekly review (entries=%d)", len(entries))
+        try:
+            result_json = call_llm(
+                WEEKLY_REVIEW_PROMPT,
+                _weekly_review_input(entries, ctx),
+                json_mode=True,
+            )
+            data = json.loads(result_json)
+            return {
+                "moved":     [str(x)[:300] for x in data.get("moved", []) if x],
+                "stalled":   [str(x)[:300] for x in data.get("stalled", []) if x],
+                "pattern":   str(data.get("pattern", ""))[:1000],
+                "directive": str(data.get("directive", ""))[:300],
+            }
+        except Exception as e:
+            logger.error("Weekly review generation failed: %s", e)
+            return {
+                "moved":     ["You showed up this week."],
+                "stalled":   ["Not enough data to assess all pillars yet."],
+                "pattern":   "Keep journaling — the patterns will emerge with more entries.",
+                "directive": "Write your evening journal every day this week without missing.",
+            }
 
     def extract_facts(self, journal_text: str, existing_facts: list[str]) -> list[str]:
         logger.info("Running fact extraction (existing_facts=%d)", len(existing_facts))

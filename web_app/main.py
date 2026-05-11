@@ -112,6 +112,14 @@ class JournalResponse(BaseModel):
     momentum: str
 
 
+class WeeklyReviewResponse(BaseModel):
+    moved: list[str]
+    stalled: list[str]
+    pattern: str
+    directive: str
+    entries_this_week: int
+
+
 class PillarResponse(BaseModel):
     name: str
     status: str
@@ -237,6 +245,36 @@ async def submit_evening_journal(
         pillar_updated=result["pillar"],
         momentum=result["momentum"],
     )
+
+
+@app.get("/ritual/weekly", response_model=WeeklyReviewResponse, tags=["ritual"])
+async def get_weekly_review(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    since = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    recent = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.user_id == user.id, JournalEntry.timestamp >= since)
+        .order_by(JournalEntry.timestamp.asc())
+        .all()
+    )
+
+    ctx = build_user_context(user.id, db)
+
+    if not recent:
+        return WeeklyReviewResponse(
+            moved=["No entries this week yet."],
+            stalled=["All pillars — nothing to review without journal entries."],
+            pattern="Come back after you've written a few entries this week.",
+            directive="Write your first entry tonight.",
+            entries_this_week=0,
+        )
+
+    entries = [
+        {"date": e.timestamp.strftime("%A %d %b"), "content": e.content}
+        for e in recent
+    ]
+
+    result = pipeline.generate_weekly_review(entries, ctx)
+    return WeeklyReviewResponse(**result, entries_this_week=len(recent))
 
 
 @app.get("/user/pillars", response_model=list[PillarResponse], tags=["user"])

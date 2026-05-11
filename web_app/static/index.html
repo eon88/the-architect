@@ -60,6 +60,7 @@
             <div class="flex justify-center gap-6">
                 <button onclick="showEvening()" class="text-sm text-gray-500 underline hover:text-white transition">Evening Journal</button>
                 <button onclick="showMap()" class="text-sm text-gray-500 underline hover:text-white transition">Pillar Map</button>
+                <button onclick="showWeeklyReview()" class="text-sm text-gray-500 underline hover:text-white transition">Weekly Review</button>
             </div>
         </div>
 
@@ -79,6 +80,39 @@
             <button id="submit-btn" onclick="submitJournal()" class="px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300">
                 Submit
             </button>
+        </div>
+    </div>
+
+    <!-- WEEKLY REVIEW SCREEN -->
+    <div id="screen-review" class="hidden w-full max-w-2xl">
+        <div class="flex justify-between items-end mb-12">
+            <div>
+                <span class="text-xs uppercase tracking-widest text-gray-500 block mb-1">Manager Hat</span>
+                <h2 class="text-4xl font-black tracking-tighter">WEEKLY REVIEW</h2>
+            </div>
+            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back</button>
+        </div>
+
+        <div id="review-loading" class="text-center py-20 text-gray-500">Analysing your week...</div>
+
+        <div id="review-content" class="hidden space-y-8">
+            <div>
+                <p class="text-xs uppercase tracking-widest text-green-500 mb-3">What Moved</p>
+                <ul id="review-moved" class="space-y-2"></ul>
+            </div>
+            <div>
+                <p class="text-xs uppercase tracking-widest text-gray-500 mb-3">What Stalled</p>
+                <ul id="review-stalled" class="space-y-2"></ul>
+            </div>
+            <div>
+                <p class="text-xs uppercase tracking-widest text-gray-500 mb-3">The Pattern</p>
+                <p id="review-pattern" class="text-lg leading-relaxed text-gray-300"></p>
+            </div>
+            <div class="glass p-6 rounded-2xl border-white">
+                <p class="text-xs uppercase tracking-widest text-white mb-3">This Week's Directive</p>
+                <p id="review-directive" class="text-xl font-medium leading-relaxed"></p>
+            </div>
+            <p id="review-meta" class="text-xs text-gray-600 text-center"></p>
         </div>
     </div>
 
@@ -169,7 +203,7 @@
         // Screens
         // ---------------------------------------------------------------------------
         function hideAll() {
-            ['screen-login','screen-ritual','screen-map','morning-view','evening-view']
+            ['screen-login','screen-ritual','screen-map','screen-review','morning-view','evening-view']
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
@@ -261,12 +295,56 @@
             }
         }
 
+        async function showWeeklyReview() {
+            if (!authToken) { showLoginScreen(); return; }
+            hideAll();
+            document.getElementById('screen-review').classList.remove('hidden');
+            document.getElementById('review-loading').classList.remove('hidden');
+            document.getElementById('review-content').classList.add('hidden');
+
+            try {
+                const data = await apiFetch('/ritual/weekly');
+
+                // Populate moved
+                const movedEl = document.getElementById('review-moved');
+                movedEl.textContent = '';
+                data.moved.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'text-gray-300 pl-4 border-l border-green-800';
+                    li.textContent = item;
+                    movedEl.appendChild(li);
+                });
+
+                // Populate stalled
+                const stalledEl = document.getElementById('review-stalled');
+                stalledEl.textContent = '';
+                data.stalled.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'text-gray-400 pl-4 border-l border-gray-700';
+                    li.textContent = item;
+                    stalledEl.appendChild(li);
+                });
+
+                document.getElementById('review-pattern').textContent = data.pattern;
+                document.getElementById('review-directive').textContent = data.directive;
+                document.getElementById('review-meta').textContent =
+                    `Based on ${data.entries_this_week} journal ${data.entries_this_week === 1 ? 'entry' : 'entries'} this week`;
+
+                document.getElementById('review-loading').classList.add('hidden');
+                document.getElementById('review-content').classList.remove('hidden');
+            } catch (e) {
+                showToast(e.message, true);
+                showRitual();
+            }
+        }
+
         // ---------------------------------------------------------------------------
         // Keyboard shortcuts
         // ---------------------------------------------------------------------------
         window.addEventListener('keydown', e => {
             if (e.key === 'm') showMap();
             if (e.key === 'r') showRitual();
+            if (e.key === 'w') showWeeklyReview();
         });
 
         // ---------------------------------------------------------------------------
