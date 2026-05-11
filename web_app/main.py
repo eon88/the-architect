@@ -49,6 +49,26 @@ _SEED_QUESTIONS: list[tuple[str, str]] = [
 ]
 
 
+_MIDDAY_CHALLENGES: dict[str, str] = {
+    "Social":             "Who haven't you reached out to in the last two weeks that you've been meaning to? Send the message right now — not later.",
+    "Financial":          "Open your banking app. Look at the last 7 days of spending. What purchase would you take back?",
+    "Spiritual":          "Put the phone down for 10 minutes. No screen, no music, no podcast. Just sit. Can you actually do it?",
+    "Craft/Career":       "What is the one task you have been avoiding today? Stop reading this and go do it first.",
+    "Emotional/Intimacy": "Think of the person closest to you. When did you last say something real to them — not small talk, not logistics?",
+    "Intellectual":       "What is one idea you have been meaning to explore? You have 15 minutes. Start now.",
+    "Legacy":             "What have you done today that your future self would be grateful for? If the answer is nothing — you still have time.",
+}
+
+
+def _get_priority_pillar(pillar_states: list[dict]) -> str:
+    paused = [p for p in pillar_states if p["status"] == "Paused"]
+    if paused:
+        return max(paused, key=lambda p: p["days_in_state"])["name"]
+    if pillar_states:
+        return min(pillar_states, key=lambda p: p["days_in_state"])["name"]
+    return "Social"
+
+
 def _compute_streak(user_id: int, db: Session) -> int:
     entries = db.query(JournalEntry.timestamp).filter(JournalEntry.user_id == user_id).all()
     if not entries:
@@ -117,6 +137,11 @@ class OnboardRequest(BaseModel):
         if len(v) > 2000:
             raise ValueError("Response is too long (max 2,000 characters)")
         return v
+
+
+class MiddayResponse(BaseModel):
+    pillar: str
+    challenge: str
 
 
 class MorningRitualResponse(BaseModel):
@@ -296,6 +321,13 @@ async def get_morning_ritual(user: User = Depends(require_user), db: Session = D
         streak=streak,
         total_entries=ctx.entry_count,
     )
+
+
+@app.get("/ritual/midday", response_model=MiddayResponse, tags=["ritual"])
+async def get_midday(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    ctx = build_user_context(user.id, db)
+    pillar = _get_priority_pillar(ctx.pillar_states)
+    return MiddayResponse(pillar=pillar, challenge=_MIDDAY_CHALLENGES[pillar])
 
 
 @app.post("/ritual/evening", response_model=JournalResponse, tags=["ritual"])

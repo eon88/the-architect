@@ -52,6 +52,14 @@
         </button>
     </div>
 
+    <!-- MIDDAY SCREEN -->
+    <div id="screen-midday" class="hidden text-center max-w-xl w-full">
+        <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Midday</span>
+        <p id="midday-pillar" class="text-xs uppercase tracking-widest text-gray-600 mb-6"></p>
+        <p id="midday-challenge" class="text-2xl font-medium leading-relaxed mb-12"></p>
+        <button onclick="showRitual()" class="text-sm text-gray-500 underline hover:text-white transition">Back to Morning</button>
+    </div>
+
     <!-- ONBOARDING SCREEN -->
     <div id="screen-onboard" class="hidden text-center max-w-xl w-full">
         <span class="text-xs uppercase tracking-widest text-gray-500 mb-6 block">The Single Spark</span>
@@ -82,6 +90,7 @@
                 <span id="stat-total" class="text-xs uppercase tracking-widest text-gray-500"></span>
             </div>
             <div class="flex justify-center gap-6 flex-wrap">
+                <button onclick="showMidday()" class="text-sm text-gray-500 underline hover:text-white transition">Midday</button>
                 <button onclick="showEvening()" class="text-sm text-gray-500 underline hover:text-white transition">Evening Journal</button>
                 <button onclick="showMap()" class="text-sm text-gray-500 underline hover:text-white transition">Pillar Map</button>
                 <button onclick="showWeeklyReview()" class="text-sm text-gray-500 underline hover:text-white transition">Weekly Review</button>
@@ -282,7 +291,7 @@
         // Screens
         // ---------------------------------------------------------------------------
         function hideAll() {
-            ['screen-login','screen-onboard','screen-ritual','screen-map','screen-review','screen-monthly','screen-facts','morning-view','evening-view']
+            ['screen-login','screen-onboard','screen-midday','screen-ritual','screen-map','screen-review','screen-monthly','screen-facts','morning-view','evening-view']
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
@@ -323,6 +332,23 @@
         function showLoginScreen() {
             hideAll();
             document.getElementById('screen-login').classList.remove('hidden');
+        }
+
+        async function showMidday() {
+            if (!authToken) { showLoginScreen(); return; }
+            hideAll();
+            document.getElementById('screen-midday').classList.remove('hidden');
+            document.getElementById('midday-challenge').textContent = '';
+            document.getElementById('midday-pillar').textContent = '';
+
+            try {
+                const data = await apiFetch('/ritual/midday');
+                document.getElementById('midday-pillar').textContent = data.pillar;
+                document.getElementById('midday-challenge').textContent = data.challenge;
+            } catch (e) {
+                showToast(e.message, true);
+                showRitual();
+            }
         }
 
         function showOnboarding() {

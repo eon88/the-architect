@@ -135,6 +135,32 @@ def test_onboard_too_long_spark_rejected():
 
 
 # ---------------------------------------------------------------------------
+# Midday
+# ---------------------------------------------------------------------------
+
+def test_midday_requires_auth():
+    assert client.get("/ritual/midday").status_code == 401
+
+
+def test_midday_returns_pillar_and_challenge():
+    token, _ = _login("midday_basic@example.com")
+    res = client.get("/ritual/midday", headers=auth_headers(token))
+    assert res.status_code == 200
+    data = res.json()
+    assert "pillar" in data and isinstance(data["pillar"], str)
+    assert "challenge" in data and isinstance(data["challenge"], str)
+    assert len(data["challenge"]) > 20
+
+
+def test_midday_pillar_is_known():
+    known = {"Social", "Financial", "Spiritual", "Craft/Career",
+             "Emotional/Intimacy", "Intellectual", "Legacy"}
+    token, _ = _login("midday_pillar@example.com")
+    data = client.get("/ritual/midday", headers=auth_headers(token)).json()
+    assert data["pillar"] in known
+
+
+# ---------------------------------------------------------------------------
 # Morning ritual
 # ---------------------------------------------------------------------------
 
