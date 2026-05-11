@@ -85,6 +85,21 @@ class LoginResponse(BaseModel):
     user_id: int
     email: str
     token: str
+    has_onboarded: bool
+
+
+class OnboardRequest(BaseModel):
+    spark: str
+
+    @field_validator("spark")
+    @classmethod
+    def spark_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Response must not be blank")
+        if len(v) > 2000:
+            raise ValueError("Response is too long (max 2,000 characters)")
+        return v
 
 
 class MorningRitualResponse(BaseModel):
@@ -182,7 +197,49 @@ async def login(data: LoginRequest, db: Session = Depends(get_db)):
         logger.info("Existing user logged in: %s", data.email)
 
     token = create_session(user.id)
-    return LoginResponse(user_id=user.id, email=user.email, token=token)
+    return LoginResponse(user_id=user.id, email=user.email, token=token, has_onboarded=user.has_onboarded)
+
+
+@app.post("/user/onboard", tags=["user"])
+async def onboard_user(
+    data: OnboardRequest,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    if user.has_onboarded:
+        raise HTTPException(status_code=400, detail="Already onboarded")
+
+    # Run through the pipeline to extract pillar signal and facts
+    result = pipeline.process_journal(data.spark)
+    new_facts = pipeline.extract_facts(data.spark, [])
+
+    # Store the Single Spark as a journal entry so morning ritual has context
+    entry = JournalEntry(
+        user_id=user.id,
+        content=data.spark,
+        pillar_associated=result["pillar"],
+    )
+    db.add(entry)
+
+    # Set initial pillar momentum from the spark analysis
+    pillar = (
+        db.query(PillarState)
+        .filter(PillarState.user_id == user.id, PillarState.pillar_name == result["pillar"])
+        .first()
+    )
+    if pillar:
+        pillar.status = result["momentum"]
+        pillar.last_updated = datetime.datetime.utcnow()
+
+    # Store extracted facts
+    for fact in new_facts:
+        db.add(UserFact(user_id=user.id, content=fact))
+
+    user.has_onboarded = True
+    db.commit()
+
+    logger.info("User onboarded: user_id=%d, pillar=%s", user.id, result["pillar"])
+    return {"status": "complete", "pillar": result["pillar"]}
 
 
 @app.get("/ritual/morning", response_model=MorningRitualResponse, tags=["ritual"])

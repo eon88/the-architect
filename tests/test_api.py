@@ -76,6 +76,65 @@ def test_pillars_requires_auth():
 
 
 # ---------------------------------------------------------------------------
+# Onboarding
+# ---------------------------------------------------------------------------
+
+def test_login_returns_has_onboarded_false_for_new_user():
+    res = client.post("/auth/login", json={"email": "onboard_flag@example.com", "name": "Test"})
+    assert res.status_code == 200
+    assert res.json()["has_onboarded"] is False
+
+
+def test_onboard_requires_auth():
+    assert client.post("/user/onboard", json={"spark": "I want more."}).status_code == 401
+
+
+def test_onboard_success():
+    token, _ = _login("onboard_ok@example.com")
+    res = client.post(
+        "/user/onboard",
+        json={"spark": "I am tired of settling for a mediocre career and financial stress."},
+        headers=auth_headers(token),
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "complete"
+    assert "pillar" in data
+
+
+def test_onboard_sets_has_onboarded_flag():
+    token, _ = _login("onboard_flag2@example.com")
+    client.post(
+        "/user/onboard",
+        json={"spark": "I am tired of being broke."},
+        headers=auth_headers(token),
+    )
+    # Re-login to get fresh response
+    res = client.post("/auth/login", json={"email": "onboard_flag2@example.com", "name": "Test"})
+    assert res.json()["has_onboarded"] is True
+
+
+def test_onboard_cannot_be_called_twice():
+    token, _ = _login("onboard_twice@example.com")
+    payload = {"spark": "I want a better life."}
+    client.post("/user/onboard", json=payload, headers=auth_headers(token))
+    res = client.post("/user/onboard", json=payload, headers=auth_headers(token))
+    assert res.status_code == 400
+
+
+def test_onboard_blank_spark_rejected():
+    token, _ = _login("onboard_blank@example.com")
+    res = client.post("/user/onboard", json={"spark": "   "}, headers=auth_headers(token))
+    assert res.status_code == 422
+
+
+def test_onboard_too_long_spark_rejected():
+    token, _ = _login("onboard_long@example.com")
+    res = client.post("/user/onboard", json={"spark": "x" * 2001}, headers=auth_headers(token))
+    assert res.status_code == 422
+
+
+# ---------------------------------------------------------------------------
 # Morning ritual
 # ---------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 import logging
 import time
 import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from config import DATABASE_URL
@@ -54,6 +54,7 @@ class User(Base):
     email = Column(String(254), unique=True, index=True, nullable=False)
     full_name = Column(String(200), nullable=False, default="Architect")
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    has_onboarded = Column(Boolean, nullable=False, default=False)
 
 
 class PillarState(Base):

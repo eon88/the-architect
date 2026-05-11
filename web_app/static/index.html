@@ -52,6 +52,25 @@
         </button>
     </div>
 
+    <!-- ONBOARDING SCREEN -->
+    <div id="screen-onboard" class="hidden text-center max-w-xl w-full">
+        <span class="text-xs uppercase tracking-widest text-gray-500 mb-6 block">The Single Spark</span>
+        <h2 class="text-3xl font-bold mb-4 leading-snug">What is the one thing in your life<br>you are tired of settling for?</h2>
+        <p class="text-gray-500 mb-10 text-sm">Be specific. Be honest. No one is watching.</p>
+        <textarea
+            id="spark-input"
+            class="w-full h-40 p-6 bg-transparent border-2 border-gray-800 rounded-2xl focus:border-white outline-none transition text-lg"
+            placeholder="Write here..."
+            maxlength="2000"
+        ></textarea>
+        <div class="flex justify-end mt-2 mb-8">
+            <span id="spark-char-count" class="text-xs text-gray-600">0 / 2,000</span>
+        </div>
+        <button id="spark-btn" onclick="submitSpark()" class="w-full py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300 text-lg">
+            Begin
+        </button>
+    </div>
+
     <!-- RITUAL SCREEN -->
     <div id="screen-ritual" class="hidden w-full max-w-2xl text-center">
         <div id="morning-view" class="hidden">
@@ -191,7 +210,11 @@
                 userId    = data.user_id;
                 sessionStorage.setItem('architect_token', authToken);
                 sessionStorage.setItem('architect_user_id', userId);
-                await showRitual();
+                if (!data.has_onboarded) {
+                    showOnboarding();
+                } else {
+                    await showRitual();
+                }
             } catch (e) {
                 showToast(e.message, true);
                 btn.disabled = false;
@@ -203,7 +226,7 @@
         // Screens
         // ---------------------------------------------------------------------------
         function hideAll() {
-            ['screen-login','screen-ritual','screen-map','screen-review','morning-view','evening-view']
+            ['screen-login','screen-onboard','screen-ritual','screen-map','screen-review','morning-view','evening-view']
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
@@ -231,6 +254,38 @@
         function showLoginScreen() {
             hideAll();
             document.getElementById('screen-login').classList.remove('hidden');
+        }
+
+        function showOnboarding() {
+            hideAll();
+            document.getElementById('screen-onboard').classList.remove('hidden');
+            document.getElementById('spark-input').value = '';
+            document.getElementById('spark-char-count').textContent = '0 / 2,000';
+        }
+
+        document.getElementById('spark-input').addEventListener('input', function () {
+            document.getElementById('spark-char-count').textContent = `${this.value.length.toLocaleString()} / 2,000`;
+        });
+
+        async function submitSpark() {
+            const spark = document.getElementById('spark-input').value.trim();
+            if (!spark) { showToast('Write something first.', true); return; }
+
+            const btn = document.getElementById('spark-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Processing...';
+
+            try {
+                await apiFetch('/user/onboard', {
+                    method: 'POST',
+                    body: JSON.stringify({ spark }),
+                });
+                await showRitual();
+            } catch (e) {
+                showToast(e.message, true);
+                btn.disabled = false;
+                btn.textContent = 'Begin';
+            }
         }
 
         function showEvening() {
