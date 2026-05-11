@@ -146,6 +146,25 @@ def test_morning_ritual_returns_message_and_seed_question():
     assert "message" in data
     assert "seed_question" in data
     assert isinstance(data["seed_question"], str) and len(data["seed_question"]) > 0
+    assert "streak" in data and isinstance(data["streak"], int)
+    assert "total_entries" in data and isinstance(data["total_entries"], int)
+
+
+def test_morning_ritual_streak_zero_for_new_user():
+    token, _ = _login("streak_zero@example.com")
+    data = client.get("/ritual/morning", headers=auth_headers(token)).json()
+    assert data["streak"] == 0
+    assert data["total_entries"] == 0
+
+
+def test_morning_ritual_streak_increments_after_journal():
+    token, _ = _login("streak_one@example.com")
+    client.post("/ritual/evening",
+                json={"content": "Day one entry."},
+                headers=auth_headers(token))
+    data = client.get("/ritual/morning", headers=auth_headers(token)).json()
+    assert data["streak"] >= 1
+    assert data["total_entries"] >= 1
 
 
 def test_morning_ritual_day_one_message():

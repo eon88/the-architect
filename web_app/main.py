@@ -49,6 +49,23 @@ _SEED_QUESTIONS: list[tuple[str, str]] = [
 ]
 
 
+def _compute_streak(user_id: int, db: Session) -> int:
+    entries = db.query(JournalEntry.timestamp).filter(JournalEntry.user_id == user_id).all()
+    if not entries:
+        return 0
+    dates = {e.timestamp.date() for e in entries}
+    today = datetime.datetime.utcnow().date()
+    start = today if today in dates else today - datetime.timedelta(days=1)
+    if start not in dates:
+        return 0
+    streak = 0
+    current = start
+    while current in dates:
+        streak += 1
+        current -= datetime.timedelta(days=1)
+    return streak
+
+
 def _get_seed_question(entry_count: int, pillar_states: list[dict]) -> str:
     if entry_count < len(_SEED_QUESTIONS):
         return _SEED_QUESTIONS[entry_count][1]
@@ -105,6 +122,8 @@ class OnboardRequest(BaseModel):
 class MorningRitualResponse(BaseModel):
     message: str
     seed_question: str
+    streak: int
+    total_entries: int
 
 
 class JournalRequest(BaseModel):
@@ -259,17 +278,24 @@ async def onboard_user(
 @app.get("/ritual/morning", response_model=MorningRitualResponse, tags=["ritual"])
 async def get_morning_ritual(user: User = Depends(require_user), db: Session = Depends(get_db)):
     ctx = build_user_context(user.id, db)
-
+    streak = _compute_streak(user.id, db)
     seed_question = _get_seed_question(ctx.entry_count, ctx.pillar_states)
 
     if not ctx.recent_entries:
         return MorningRitualResponse(
             message="Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do.",
             seed_question=seed_question,
+            streak=streak,
+            total_entries=ctx.entry_count,
         )
 
     result = pipeline.process_journal(ctx.recent_entries[0], ctx)
-    return MorningRitualResponse(message=result["message"], seed_question=seed_question)
+    return MorningRitualResponse(
+        message=result["message"],
+        seed_question=seed_question,
+        streak=streak,
+        total_entries=ctx.entry_count,
+    )
 
 
 @app.post("/ritual/evening", response_model=JournalResponse, tags=["ritual"])
