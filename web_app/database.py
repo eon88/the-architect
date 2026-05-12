@@ -93,6 +93,16 @@ class DailyRitual(Base):
     directive = Column(Text, nullable=False)
 
 
+class PillarTarget(Base):
+    __tablename__ = "pillar_targets"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    pillar_name = Column(String(50), nullable=False)
+    text = Column(String(200), nullable=False)
+    status = Column(String(10), nullable=False, default="locked")  # locked | active | done
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
 Base.metadata.create_all(bind=engine)
 
 

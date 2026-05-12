@@ -10,7 +10,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from config import CORS_ORIGINS, configure_logging
-from database import SessionLocal, User, PillarState, JournalEntry, UserFact, DailyRitual, PILLARS
+from database import SessionLocal, User, PillarState, JournalEntry, UserFact, DailyRitual, PillarTarget, PILLARS
 from pipeline import ArchitectPipeline
 from auth import create_session, get_current_user_id
 from context import build_user_context
@@ -104,6 +104,37 @@ def _get_seed_question(entry_count: int, pillar_states: list[dict]) -> str:
 # ---------------------------------------------------------------------------
 # Request / Response models
 # ---------------------------------------------------------------------------
+
+class TargetCreate(BaseModel):
+    pillar_name: str
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Target text must not be blank")
+        return v[:200]
+
+
+class TargetUpdate(BaseModel):
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def valid_status(cls, v: str) -> str:
+        if v not in ("locked", "active", "done"):
+            raise ValueError("Status must be locked, active, or done")
+        return v
+
+
+class TargetResponse(BaseModel):
+    id: int
+    pillar_name: str
+    text: str
+    status: str
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -561,3 +592,49 @@ async def get_pillars(user: User = Depends(require_user), db: Session = Depends(
         )
         for p in pillars
     ]
+
+
+# ---------------------------------------------------------------------------
+# Pillar Targets (Vision Board)
+# ---------------------------------------------------------------------------
+
+@app.get("/user/targets", response_model=list[TargetResponse], tags=["user"])
+async def get_targets(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    targets = (
+        db.query(PillarTarget)
+        .filter(PillarTarget.user_id == user.id)
+        .order_by(PillarTarget.created_at)
+        .all()
+    )
+    return [TargetResponse(id=t.id, pillar_name=t.pillar_name, text=t.text, status=t.status) for t in targets]
+
+
+@app.post("/user/targets", response_model=TargetResponse, tags=["user"])
+async def create_target(data: TargetCreate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    if data.pillar_name not in PILLARS:
+        raise HTTPException(status_code=400, detail="Invalid pillar name")
+    target = PillarTarget(user_id=user.id, pillar_name=data.pillar_name, text=data.text)
+    db.add(target)
+    db.commit()
+    db.refresh(target)
+    return TargetResponse(id=target.id, pillar_name=target.pillar_name, text=target.text, status=target.status)
+
+
+@app.patch("/user/targets/{target_id}", response_model=TargetResponse, tags=["user"])
+async def update_target(target_id: int, data: TargetUpdate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    target = db.query(PillarTarget).filter(PillarTarget.id == target_id, PillarTarget.user_id == user.id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+    target.status = data.status
+    db.commit()
+    return TargetResponse(id=target.id, pillar_name=target.pillar_name, text=target.text, status=target.status)
+
+
+@app.delete("/user/targets/{target_id}", tags=["user"])
+async def delete_target(target_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    target = db.query(PillarTarget).filter(PillarTarget.id == target_id, PillarTarget.user_id == user.id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+    db.delete(target)
+    db.commit()
+    return {"deleted": target_id}

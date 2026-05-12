@@ -264,6 +264,89 @@
             color: var(--text-dim); text-align: center; margin-top: 1rem;
         }
 
+        /* ── VISION BOARD ── */
+        #screen-map {
+            position: fixed; inset: 0; z-index: 100;
+            background: var(--black);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        .vb-topbar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border);
+            font-size: 0.6rem; letter-spacing: 0.12em; color: var(--text-dim);
+            background: rgba(0,3,0,0.85); flex-shrink: 0;
+        }
+        .vb-topbar-title { color: var(--green); font-size: 0.72rem; letter-spacing: 0.22em; }
+        .vb-legend {
+            display: flex; gap: 0.75rem 1.25rem; flex-wrap: wrap;
+            padding: 0.5rem 1.25rem; border-bottom: 1px solid var(--border);
+            font-size: 0.58rem; letter-spacing: 0.12em; flex-shrink: 0;
+            background: rgba(0,3,0,0.5);
+        }
+        .leg-active { color: var(--green); }
+        .leg-locked { color: var(--text-dim); }
+        .leg-done   { color: #005518; }
+        .leg-note   { color: #003b0f; margin-left: auto; }
+        .vb-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px; flex: 1;
+            overflow-y: auto;
+            background: var(--border);
+        }
+        .sector {
+            background: var(--black); padding: 1rem;
+            display: flex; flex-direction: column; min-height: 180px; position: relative;
+        }
+        .sector-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 0.65rem; padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .sector-name { font-family: 'VT323', monospace; font-size: 1.35rem; letter-spacing: 0.06em; line-height: 1; }
+        .sector-status { font-size: 0.52rem; letter-spacing: 0.18em; margin-top: 0.2rem; }
+        .sector-status.s-active { color: var(--green); }
+        .sector-status.s-idle   { color: var(--text-dim); }
+        .sector-count { font-size: 0.52rem; color: var(--text-dim); letter-spacing: 0.1em; white-space: nowrap; }
+        .target-list { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.5rem; }
+        .target-item {
+            font-size: 0.7rem; line-height: 1.4; letter-spacing: 0.03em;
+            padding: 0.3rem 0.5rem; border-left: 2px solid transparent;
+            cursor: pointer; transition: border-color 0.15s, color 0.15s;
+            word-break: break-word; user-select: none;
+        }
+        .target-item::before { font-size: 0.55rem; margin-right: 0.4rem; }
+        .target-item.t-locked { color: var(--text-dim); border-left-color: #002a0a; }
+        .target-item.t-locked::before { content: '◇'; }
+        .target-item.t-active { color: var(--green); border-left-color: var(--green); }
+        .target-item.t-active::before { content: '◆'; }
+        .target-item.t-done   { color: #004d18; border-left-color: #002a0a; text-decoration: line-through; opacity: 0.6; }
+        .target-item.t-done::before { content: '✓'; }
+        .target-item:hover { background: rgba(0,255,65,0.03); }
+        .add-row { margin-top: auto; }
+        .add-btn {
+            background: none; border: 1px dashed rgba(0,255,65,0.18);
+            color: var(--text-dim); font-family: 'Share Tech Mono', monospace;
+            font-size: 0.58rem; letter-spacing: 0.15em; cursor: pointer;
+            padding: 0.3rem 0.5rem; width: 100%; text-align: left;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .add-btn:hover { border-color: var(--border-hi); color: var(--green); }
+        .add-btn::before { content: '+ '; }
+        .add-input-row { display: none; gap: 0.4rem; align-items: center; margin-top: 0.35rem; }
+        .add-input-row.open { display: flex; }
+        .target-input {
+            flex: 1; background: none; border: none; border-bottom: 1px solid var(--border-hi);
+            color: var(--green); font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem; outline: none; padding: 0.2rem 0; caret-color: var(--green);
+        }
+        .target-input::placeholder { color: var(--text-dim); opacity: 0.5; }
+        .add-confirm {
+            background: none; border: none; color: var(--green);
+            font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; cursor: pointer; padding: 0 0.3rem;
+        }
+
         /* ── MILESTONES ── */
         .milestone-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.65rem; }
         .milestone-label { width: 9rem; flex-shrink: 0; }
@@ -600,16 +683,20 @@
     <ul id="facts-list" class="hidden"></ul>
 </div>
 
-<!-- ═══════════════════  PILLAR MAP  ═════════════ -->
-<div id="screen-map" class="panel hidden" style="max-width:780px;width:100%;">
-    <div class="sys-bar">
-        <span><span class="sys-dot"></span>MAP::LOADED</span>
-        <span>ARCHITECTURE SCAN</span>
-        <button onclick="showRitual()" class="btn-ghost" style="font-size:0.58rem;">BACK</button>
+<!-- ═══════════════════  VISION BOARD  ══════════ -->
+<div id="screen-map" class="hidden">
+    <div class="vb-topbar">
+        <span><span class="sys-dot"></span>VISION BOARD::ACTIVE</span>
+        <span class="vb-topbar-title">// SECTOR MAP</span>
+        <button onclick="showRitual()" class="btn-ghost" style="font-size:0.58rem;">← MORNING</button>
     </div>
-    <div class="sys-label">// PILLAR ARCHITECTURE</div>
-    <hr class="divider">
-    <div id="pillars-grid"></div>
+    <div class="vb-legend">
+        <span class="leg-active">◆ ACTIVE</span>
+        <span class="leg-locked">◇ LOCKED</span>
+        <span class="leg-done">✓ DONE</span>
+        <span class="leg-note">// TAP TARGET TO CYCLE · HOLD TO DELETE</span>
+    </div>
+    <div id="sectors-grid" class="vb-grid"></div>
 </div>
 
 <script>
@@ -886,36 +973,133 @@ async function showMap() {
     if (!authToken) { showLoginScreen(); return; }
     hideAll();
     document.getElementById('screen-map').classList.remove('hidden');
-    const grid = document.getElementById('pillars-grid');
-    grid.textContent = '';
+    document.getElementById('sectors-grid').innerHTML =
+        '<div style="padding:2rem;color:var(--text-dim);font-size:0.7rem;letter-spacing:0.15em;animation:blink 1.2s step-end infinite;">// LOADING SECTORS...</div>';
     try {
-        const pillars = await apiFetch('/user/pillars');
-        pillars.forEach(p => {
-            const card = document.createElement('div');
-            const isMoving = p.status === 'Moving';
-            let urgency = '';
-            if (!isMoving) {
-                urgency = p.days_in_state < 7 ? 'paused-warn' : p.days_in_state < 14 ? 'paused-alert' : 'paused-danger';
-            }
-            card.className = `pillar-card ${isMoving ? 'moving' : urgency}`;
+        const [pillars, targets] = await Promise.all([
+            apiFetch('/user/pillars'),
+            apiFetch('/user/targets'),
+        ]);
+        _buildVisionBoard(pillars, targets);
+    } catch (e) {
+        showToast(e.message, true);
+    }
+}
 
-            const name = document.createElement('div');
-            name.className = 'sys-label pillar-name';
-            name.textContent = p.name.toUpperCase();
+function _buildVisionBoard(pillars, targets) {
+    const grid = document.getElementById('sectors-grid');
+    grid.innerHTML = '';
+    const byPillar = {};
+    targets.forEach(t => { (byPillar[t.pillar_name] = byPillar[t.pillar_name] || []).push(t); });
 
-            const status = document.createElement('span');
-            status.className = `pillar-status ${isMoving ? 'status-moving' : 'status-paused'}`;
-            status.textContent = isMoving ? '◆ ACTIVE' : '○ IDLE';
+    pillars.forEach(p => {
+        const pts = byPillar[p.name] || [];
+        const isMoving = p.status === 'Moving';
+        const active = pts.filter(t => t.status === 'active').length;
+        const done   = pts.filter(t => t.status === 'done').length;
+        const pid    = p.name.replace(/[^a-zA-Z0-9]/g, '_');
 
-            const days = document.createElement('div');
-            days.className = 'pillar-days';
-            days.textContent = p.days_in_state === 0 ? 'SINCE TODAY' : `${p.days_in_state}D IN THIS STATE`;
+        const sector = document.createElement('div');
+        sector.className = 'sector';
+        sector.innerHTML = `
+            <div class="sector-header">
+                <div>
+                    <div class="sector-name">${p.name}</div>
+                    <div class="sector-status ${isMoving ? 's-active' : 's-idle'}">${isMoving ? '◆ ACTIVE' : '○ IDLE'} · ${p.days_in_state}D</div>
+                </div>
+                <div class="sector-count">${active} ACTIVE · ${done} DONE</div>
+            </div>
+            <div class="target-list" id="tlist-${pid}"></div>
+            <div class="add-row">
+                <button class="add-btn" onclick="_openTargetInput('${pid}')">ADD TARGET</button>
+                <div class="add-input-row" id="inputrow-${pid}">
+                    <input class="target-input" id="tinput-${pid}" placeholder="ENTER TARGET..." maxlength="120"
+                        onkeydown="_targetKey(event,'${pid}','${p.name}')">
+                    <button class="add-confirm" onclick="_confirmTarget('${pid}','${p.name}')">↵</button>
+                </div>
+            </div>`;
+        grid.appendChild(sector);
+        _renderTargets(pid, pts);
+    });
+}
 
-            card.appendChild(name);
-            card.appendChild(status);
-            card.appendChild(days);
-            grid.appendChild(card);
+function _renderTargets(pid, targets) {
+    const list = document.getElementById('tlist-' + pid);
+    if (!list) return;
+    list.innerHTML = '';
+    targets.forEach(t => {
+        const div = document.createElement('div');
+        div.className = `target-item t-${t.status}`;
+        div.textContent = t.text;
+        div.title = 'Tap to cycle · hold to delete';
+        div.onclick = () => _cycleTarget(t, div);
+        div.oncontextmenu = (e) => { e.preventDefault(); _deleteTarget(t.id, div); };
+        // Long-press for mobile delete
+        let pressTimer;
+        div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => _deleteTarget(t.id, div), 600); });
+        div.addEventListener('touchend', () => clearTimeout(pressTimer));
+        list.appendChild(div);
+    });
+}
+
+async function _cycleTarget(t, el) {
+    const order = ['locked', 'active', 'done'];
+    const next = order[(order.indexOf(t.status) + 1) % order.length];
+    el.className = `target-item t-${next}`;
+    const prev = t.status;
+    t.status = next;
+    try {
+        await apiFetch(`/user/targets/${t.id}`, { method: 'PATCH', body: JSON.stringify({ status: next }) });
+    } catch (e) {
+        el.className = `target-item t-${prev}`;
+        t.status = prev;
+        showToast(e.message, true);
+    }
+}
+
+async function _deleteTarget(id, el) {
+    el.style.opacity = '0.3';
+    try {
+        await apiFetch(`/user/targets/${id}`, { method: 'DELETE' });
+        el.remove();
+    } catch (e) {
+        el.style.opacity = '';
+        showToast(e.message, true);
+    }
+}
+
+function _openTargetInput(pid) {
+    document.getElementById('inputrow-' + pid).classList.add('open');
+    document.getElementById('tinput-' + pid).focus();
+}
+
+function _targetKey(e, pid, pillarName) {
+    if (e.key === 'Enter')  _confirmTarget(pid, pillarName);
+    if (e.key === 'Escape') document.getElementById('inputrow-' + pid).classList.remove('open');
+}
+
+async function _confirmTarget(pid, pillarName) {
+    const input = document.getElementById('tinput-' + pid);
+    const text  = input.value.trim().toUpperCase();
+    if (!text) return;
+    input.value = '';
+    document.getElementById('inputrow-' + pid).classList.remove('open');
+    try {
+        const t = await apiFetch('/user/targets', {
+            method: 'POST',
+            body: JSON.stringify({ pillar_name: pillarName, text }),
         });
+        const list = document.getElementById('tlist-' + pid);
+        const div  = document.createElement('div');
+        div.className = 'target-item t-locked';
+        div.textContent = t.text;
+        div.title = 'Tap to cycle · hold to delete';
+        div.onclick = () => _cycleTarget(t, div);
+        div.oncontextmenu = (e) => { e.preventDefault(); _deleteTarget(t.id, div); };
+        let pressTimer;
+        div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => _deleteTarget(t.id, div), 600); });
+        div.addEventListener('touchend', () => clearTimeout(pressTimer));
+        list.appendChild(div);
     } catch (e) {
         showToast(e.message, true);
     }
