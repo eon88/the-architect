@@ -2,9 +2,17 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'web_app'))
 
+import datetime as real_dt
+from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 from main import app, _get_seed_question
+
+# Fixed test dates that pass time gates:
+# 2026-05-16 = Saturday  (weekday=5, passes weekly gate)
+# 2026-05-30 = Saturday  (weekday=5, and days_until_month_end=1, passes monthly gate)
+_SATURDAY = real_dt.date(2026, 5, 16)
+_MONTH_END = real_dt.date(2026, 5, 30)
 
 client = TestClient(app)
 
@@ -292,7 +300,8 @@ def test_weekly_review_requires_auth():
 
 def test_weekly_review_no_entries_returns_placeholder():
     token, _ = _login("no_entries_weekly@example.com")
-    res = client.get("/ritual/weekly", headers=auth_headers(token))
+    with patch('main._today', return_value=_SATURDAY):
+        res = client.get("/ritual/weekly", headers=auth_headers(token))
     assert res.status_code == 200
     data = res.json()
     assert data["entries_this_week"] == 0
@@ -311,7 +320,8 @@ def test_weekly_review_with_entries():
                 json={"content": "Went to the gym and caught up with an old friend."},
                 headers=auth_headers(token))
 
-    res = client.get("/ritual/weekly", headers=auth_headers(token))
+    with patch('main._today', return_value=_SATURDAY):
+        res = client.get("/ritual/weekly", headers=auth_headers(token))
     assert res.status_code == 200
     data = res.json()
     assert data["entries_this_week"] == 2
@@ -326,7 +336,8 @@ def test_weekly_review_response_fields_are_strings():
     client.post("/ritual/evening",
                 json={"content": "Reflected on my goals today."},
                 headers=auth_headers(token))
-    res = client.get("/ritual/weekly", headers=auth_headers(token))
+    with patch('main._today', return_value=_SATURDAY):
+        res = client.get("/ritual/weekly", headers=auth_headers(token))
     data = res.json()
     assert isinstance(data["pattern"], str)
     assert isinstance(data["directive"], str)
@@ -344,7 +355,8 @@ def test_monthly_review_requires_auth():
 
 def test_monthly_review_no_entries_returns_placeholder():
     token, _ = _login("no_entries_monthly@example.com")
-    res = client.get("/ritual/monthly", headers=auth_headers(token))
+    with patch('main._today', return_value=_MONTH_END):
+        res = client.get("/ritual/monthly", headers=auth_headers(token))
     assert res.status_code == 200
     data = res.json()
     assert data["entries_this_month"] == 0
@@ -363,7 +375,8 @@ def test_monthly_review_with_entries():
                 json={"content": "Haven't called my friends in weeks. Feeling isolated."},
                 headers=auth_headers(token))
 
-    res = client.get("/ritual/monthly", headers=auth_headers(token))
+    with patch('main._today', return_value=_MONTH_END):
+        res = client.get("/ritual/monthly", headers=auth_headers(token))
     assert res.status_code == 200
     data = res.json()
     assert data["entries_this_month"] == 2
@@ -378,7 +391,8 @@ def test_monthly_review_response_fields_are_strings():
     client.post("/ritual/evening",
                 json={"content": "Deep focus on my craft today."},
                 headers=auth_headers(token))
-    res = client.get("/ritual/monthly", headers=auth_headers(token))
+    with patch('main._today', return_value=_MONTH_END):
+        res = client.get("/ritual/monthly", headers=auth_headers(token))
     data = res.json()
     assert isinstance(data["blind_spot"], str)
     assert isinstance(data["architectural_decision"], str)

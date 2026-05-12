@@ -1,16 +1,21 @@
+import json
 import logging
 import datetime
+import calendar
 import random
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from config import CORS_ORIGINS, configure_logging
-from database import SessionLocal, User, PillarState, JournalEntry, UserFact, DailyRitual, PillarTarget, PILLARS
+from database import (
+    SessionLocal, User, PillarState, JournalEntry, UserFact,
+    DailyRitual, PillarTarget, MilestoneItem, WeeklyReview, MonthlyReview, PILLARS
+)
 from pipeline import ArchitectPipeline
 from auth import create_session, get_current_user_id
 from context import build_user_context
@@ -129,11 +134,43 @@ class TargetUpdate(BaseModel):
         return v
 
 
+class MilestoneCreate(BaseModel):
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Milestone text must not be blank")
+        return v[:200]
+
+
+class MilestoneToggle(BaseModel):
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def valid_status(cls, v: str) -> str:
+        if v not in ("todo", "done"):
+            raise ValueError("Status must be todo or done")
+        return v
+
+
+class MilestoneResponse(BaseModel):
+    id: int
+    target_id: int
+    text: str
+    status: str
+
+
 class TargetResponse(BaseModel):
     id: int
     pillar_name: str
     text: str
     status: str
+    milestone_count: int = 0
+    milestones_done: int = 0
 
 
 class LoginRequest(BaseModel):
@@ -443,8 +480,85 @@ async def submit_evening_journal(
     )
 
 
-@app.get("/ritual/weekly", response_model=WeeklyReviewResponse, tags=["ritual"])
+def _build_targets_context(user_id: int, db: Session) -> str:
+    """Build a formatted string of active/locked targets with milestone progress."""
+    targets = (
+        db.query(PillarTarget)
+        .filter(PillarTarget.user_id == user_id, PillarTarget.status != "done")
+        .order_by(PillarTarget.pillar_name, PillarTarget.created_at)
+        .all()
+    )
+    if not targets:
+        return "No active targets set."
+    lines = []
+    for t in targets:
+        milestones = (
+            db.query(MilestoneItem)
+            .filter(MilestoneItem.target_id == t.id)
+            .order_by(MilestoneItem.created_at)
+            .all()
+        )
+        done = sum(1 for m in milestones if m.status == "done")
+        total = len(milestones)
+        badge = f"({done}/{total} milestones done)" if total else "(no milestones)"
+        lines.append(f"- [{t.pillar_name}] {t.text} — {t.status.upper()} {badge}")
+        for m in milestones:
+            icon = "✓" if m.status == "done" else "○"
+            lines.append(f"    · {icon} {m.text}")
+    return "\n".join(lines)
+
+
+def _today() -> datetime.date:
+    return datetime.date.today()
+
+
+def _days_until_month_end() -> int:
+    today = _today()
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    return last_day - today.day
+
+
+def _week_key_for_weekend() -> str:
+    """ISO week key for the current Sat/Sun window (keyed to the Sunday)."""
+    today = datetime.date.today()
+    # Advance to the nearest upcoming or current Sunday
+    days_to_sunday = (6 - today.weekday()) % 7
+    sunday = today + datetime.timedelta(days=days_to_sunday)
+    return sunday.isocalendar()[0:2]  # (year, week)
+
+
+@app.get("/ritual/weekly", tags=["ritual"])
 async def get_weekly_review(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    today = _today()
+    weekday = today.weekday()  # 0=Mon … 5=Sat, 6=Sun
+
+    if weekday < 5:  # Mon–Fri
+        days_until = 5 - weekday
+        return JSONResponse(
+            status_code=425,
+            content={"detail": "Weekly review available from Saturday", "days_until": days_until},
+        )
+
+    # Saturday or Sunday — compute week key (keyed to this Sunday)
+    days_to_sunday = (6 - weekday) % 7
+    sunday = today + datetime.timedelta(days=days_to_sunday)
+    iso = sunday.isocalendar()
+    week_key = f"{iso[0]}-W{iso[1]:02d}"
+
+    cached = (
+        db.query(WeeklyReview)
+        .filter(WeeklyReview.user_id == user.id, WeeklyReview.week_key == week_key)
+        .first()
+    )
+    if cached:
+        return WeeklyReviewResponse(
+            moved=json.loads(cached.moved),
+            stalled=json.loads(cached.stalled),
+            pattern=cached.pattern,
+            directive=cached.directive,
+            entries_this_week=cached.entries_count,
+        )
+
     since = datetime.datetime.utcnow() - datetime.timedelta(days=7)
     recent = (
         db.query(JournalEntry)
@@ -452,29 +566,62 @@ async def get_weekly_review(user: User = Depends(require_user), db: Session = De
         .order_by(JournalEntry.timestamp.asc())
         .all()
     )
-
     ctx = build_user_context(user.id, db)
+    targets_ctx = _build_targets_context(user.id, db)
 
     if not recent:
-        return WeeklyReviewResponse(
-            moved=["No entries this week yet."],
-            stalled=["All pillars — nothing to review without journal entries."],
-            pattern="Come back after you've written a few entries this week.",
-            directive="Write your first entry tonight.",
-            entries_this_week=0,
-        )
+        result = {
+            "moved": ["No entries this week yet."],
+            "stalled": ["All pillars — nothing to review without journal entries."],
+            "pattern": "Come back after you've written a few entries this week.",
+            "directive": "Write your first entry tonight.",
+        }
+    else:
+        entries = [{"date": e.timestamp.strftime("%A %d %b"), "content": e.content} for e in recent]
+        result = pipeline.generate_weekly_review(entries, ctx, targets_ctx)
 
-    entries = [
-        {"date": e.timestamp.strftime("%A %d %b"), "content": e.content}
-        for e in recent
-    ]
+    db.add(WeeklyReview(
+        user_id=user.id,
+        week_key=week_key,
+        moved=json.dumps(result["moved"]),
+        stalled=json.dumps(result["stalled"]),
+        pattern=result["pattern"],
+        directive=result["directive"],
+        entries_count=len(recent),
+    ))
+    db.commit()
+    logger.info("Generated and cached weekly review for user_id=%d week=%s", user.id, week_key)
 
-    result = pipeline.generate_weekly_review(entries, ctx)
     return WeeklyReviewResponse(**result, entries_this_week=len(recent))
 
 
-@app.get("/ritual/monthly", response_model=MonthlyReviewResponse, tags=["ritual"])
+@app.get("/ritual/monthly", tags=["ritual"])
 async def get_monthly_review(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    days_left = _days_until_month_end()
+
+    if days_left > 1:
+        return JSONResponse(
+            status_code=425,
+            content={"detail": f"Monthly review available in {days_left - 1} days", "days_until": days_left - 1},
+        )
+
+    today = _today()
+    month_key = today.strftime("%Y-%m")
+
+    cached = (
+        db.query(MonthlyReview)
+        .filter(MonthlyReview.user_id == user.id, MonthlyReview.month_key == month_key)
+        .first()
+    )
+    if cached:
+        return MonthlyReviewResponse(
+            pillars_moved=json.loads(cached.pillars_moved),
+            pillars_neglected=json.loads(cached.pillars_neglected),
+            blind_spot=cached.blind_spot,
+            architectural_decision=cached.architectural_decision,
+            entries_this_month=cached.entries_count,
+        )
+
     since = datetime.datetime.utcnow() - datetime.timedelta(days=30)
     recent = (
         db.query(JournalEntry)
@@ -482,24 +629,32 @@ async def get_monthly_review(user: User = Depends(require_user), db: Session = D
         .order_by(JournalEntry.timestamp.asc())
         .all()
     )
-
     ctx = build_user_context(user.id, db)
+    targets_ctx = _build_targets_context(user.id, db)
 
     if not recent:
-        return MonthlyReviewResponse(
-            pillars_moved=["No entries this month yet."],
-            pillars_neglected=["All pillars — nothing to assess without journal entries."],
-            blind_spot="Come back after you've built a foundation of entries. The patterns need data.",
-            architectural_decision="Write your first journal entry tonight.",
-            entries_this_month=0,
-        )
+        result = {
+            "pillars_moved": ["No entries this month yet."],
+            "pillars_neglected": ["All pillars — nothing to assess without journal entries."],
+            "blind_spot": "Come back after you've built a foundation of entries. The patterns need data.",
+            "architectural_decision": "Write your first journal entry tonight.",
+        }
+    else:
+        entries = [{"date": e.timestamp.strftime("%A %d %b"), "content": e.content} for e in recent]
+        result = pipeline.generate_monthly_review(entries, ctx, targets_ctx)
 
-    entries = [
-        {"date": e.timestamp.strftime("%A %d %b"), "content": e.content}
-        for e in recent
-    ]
+    db.add(MonthlyReview(
+        user_id=user.id,
+        month_key=month_key,
+        pillars_moved=json.dumps(result["pillars_moved"]),
+        pillars_neglected=json.dumps(result["pillars_neglected"]),
+        blind_spot=result["blind_spot"],
+        architectural_decision=result["architectural_decision"],
+        entries_count=len(recent),
+    ))
+    db.commit()
+    logger.info("Generated and cached monthly review for user_id=%d month=%s", user.id, month_key)
 
-    result = pipeline.generate_monthly_review(entries, ctx)
     return MonthlyReviewResponse(**result, entries_this_month=len(recent))
 
 
@@ -598,6 +753,18 @@ async def get_pillars(user: User = Depends(require_user), db: Session = Depends(
 # Pillar Targets (Vision Board)
 # ---------------------------------------------------------------------------
 
+def _target_to_response(t: PillarTarget, db: Session) -> TargetResponse:
+    milestones = db.query(MilestoneItem).filter(MilestoneItem.target_id == t.id).all()
+    return TargetResponse(
+        id=t.id,
+        pillar_name=t.pillar_name,
+        text=t.text,
+        status=t.status,
+        milestone_count=len(milestones),
+        milestones_done=sum(1 for m in milestones if m.status == "done"),
+    )
+
+
 @app.get("/user/targets", response_model=list[TargetResponse], tags=["user"])
 async def get_targets(user: User = Depends(require_user), db: Session = Depends(get_db)):
     targets = (
@@ -606,7 +773,7 @@ async def get_targets(user: User = Depends(require_user), db: Session = Depends(
         .order_by(PillarTarget.created_at)
         .all()
     )
-    return [TargetResponse(id=t.id, pillar_name=t.pillar_name, text=t.text, status=t.status) for t in targets]
+    return [_target_to_response(t, db) for t in targets]
 
 
 @app.post("/user/targets", response_model=TargetResponse, tags=["user"])
@@ -617,7 +784,7 @@ async def create_target(data: TargetCreate, user: User = Depends(require_user), 
     db.add(target)
     db.commit()
     db.refresh(target)
-    return TargetResponse(id=target.id, pillar_name=target.pillar_name, text=target.text, status=target.status)
+    return _target_to_response(target, db)
 
 
 @app.patch("/user/targets/{target_id}", response_model=TargetResponse, tags=["user"])
@@ -627,7 +794,7 @@ async def update_target(target_id: int, data: TargetUpdate, user: User = Depends
         raise HTTPException(status_code=404, detail="Target not found")
     target.status = data.status
     db.commit()
-    return TargetResponse(id=target.id, pillar_name=target.pillar_name, text=target.text, status=target.status)
+    return _target_to_response(target, db)
 
 
 @app.delete("/user/targets/{target_id}", tags=["user"])
@@ -638,3 +805,60 @@ async def delete_target(target_id: int, user: User = Depends(require_user), db: 
     db.delete(target)
     db.commit()
     return {"deleted": target_id}
+
+
+# ---------------------------------------------------------------------------
+# Milestones (sub-goals under Vision Board targets)
+# ---------------------------------------------------------------------------
+
+@app.get("/user/targets/{target_id}/milestones", response_model=list[MilestoneResponse], tags=["user"])
+async def get_milestones_for_target(target_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    target = db.query(PillarTarget).filter(PillarTarget.id == target_id, PillarTarget.user_id == user.id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+    items = (
+        db.query(MilestoneItem)
+        .filter(MilestoneItem.target_id == target_id)
+        .order_by(MilestoneItem.created_at)
+        .all()
+    )
+    return [MilestoneResponse(id=m.id, target_id=m.target_id, text=m.text, status=m.status) for m in items]
+
+
+@app.post("/user/targets/{target_id}/milestones", response_model=MilestoneResponse, tags=["user"])
+async def create_milestone(target_id: int, data: MilestoneCreate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    target = db.query(PillarTarget).filter(PillarTarget.id == target_id, PillarTarget.user_id == user.id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+    item = MilestoneItem(target_id=target_id, text=data.text)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return MilestoneResponse(id=item.id, target_id=item.target_id, text=item.text, status=item.status)
+
+
+@app.patch("/user/milestones/{milestone_id}", response_model=MilestoneResponse, tags=["user"])
+async def toggle_milestone(milestone_id: int, data: MilestoneToggle, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    item = db.query(MilestoneItem).filter(MilestoneItem.id == milestone_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    # Verify ownership via parent target
+    target = db.query(PillarTarget).filter(PillarTarget.id == item.target_id, PillarTarget.user_id == user.id).first()
+    if not target:
+        raise HTTPException(status_code=403, detail="Not your milestone")
+    item.status = data.status
+    db.commit()
+    return MilestoneResponse(id=item.id, target_id=item.target_id, text=item.text, status=item.status)
+
+
+@app.delete("/user/milestones/{milestone_id}", tags=["user"])
+async def delete_milestone(milestone_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    item = db.query(MilestoneItem).filter(MilestoneItem.id == milestone_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    target = db.query(PillarTarget).filter(PillarTarget.id == item.target_id, PillarTarget.user_id == user.id).first()
+    if not target:
+        raise HTTPException(status_code=403, detail="Not your milestone")
+    db.delete(item)
+    db.commit()
+    return {"deleted": milestone_id}

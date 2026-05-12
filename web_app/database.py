@@ -103,6 +103,41 @@ class PillarTarget(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
 
+class MilestoneItem(Base):
+    __tablename__ = "milestone_items"
+    id = Column(Integer, primary_key=True, index=True)
+    target_id = Column(Integer, ForeignKey("pillar_targets.id", ondelete="CASCADE"), nullable=False, index=True)
+    text = Column(String(200), nullable=False)
+    status = Column(String(10), nullable=False, default="todo")  # todo | done
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+class WeeklyReview(Base):
+    __tablename__ = "weekly_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    week_key = Column(String(10), nullable=False)  # ISO week e.g. "2026-W20"
+    moved = Column(Text, nullable=False)            # JSON-encoded list
+    stalled = Column(Text, nullable=False)          # JSON-encoded list
+    pattern = Column(Text, nullable=False)
+    directive = Column(Text, nullable=False)
+    entries_count = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class MonthlyReview(Base):
+    __tablename__ = "monthly_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    month_key = Column(String(7), nullable=False)   # e.g. "2026-05"
+    pillars_moved = Column(Text, nullable=False)    # JSON-encoded list
+    pillars_neglected = Column(Text, nullable=False)
+    blind_spot = Column(Text, nullable=False)
+    architectural_decision = Column(Text, nullable=False)
+    entries_count = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
 Base.metadata.create_all(bind=engine)
 
 

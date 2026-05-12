@@ -324,6 +324,24 @@
         .target-item.t-done   { color: #004d18; border-left-color: #002a0a; text-decoration: line-through; opacity: 0.6; }
         .target-item.t-done::before { content: '✓'; }
         .target-item:hover { background: rgba(0,255,65,0.03); }
+        .target-item { display: flex; align-items: center; justify-content: space-between; }
+        .ti-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ms-badge { font-size: 0.55rem; color: var(--text-dim); margin-left: 0.5rem; cursor: pointer; white-space: nowrap; flex-shrink: 0; letter-spacing: 0.05em; padding: 0.1rem 0.25rem; border: 1px solid transparent; }
+        .ms-badge:hover { color: var(--green); border-color: var(--border); }
+        .ms-panel { display: none; padding: 0.35rem 0 0.15rem 0.6rem; border-top: 1px solid var(--border); margin-top: 0.15rem; }
+        .ms-panel.open { display: block; }
+        .ms-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.22rem 0; font-size: 0.68rem; cursor: pointer; color: var(--green); }
+        .ms-item:hover { opacity: 0.8; }
+        .ms-item.done { color: #004d18; text-decoration: line-through; opacity: 0.65; }
+        .ms-cb { width: 9px; height: 9px; border: 1px solid var(--text-dim); display: inline-block; flex-shrink: 0; }
+        .ms-cb.checked { background: var(--green); border-color: var(--green); }
+        .ms-add-row { display: flex; gap: 0.4rem; margin-top: 0.35rem; padding-top: 0.25rem; border-top: 1px solid var(--border); }
+        .ms-input { background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--green); font-family: 'Share Tech Mono', monospace; font-size: 0.68rem; padding: 0.1rem 0.2rem; flex: 1; outline: none; }
+        .ms-input::placeholder { color: var(--text-dim); }
+        /* ── REVIEW TOO-EARLY STATE ── */
+        .review-early { padding: 1.5rem 0; text-align: center; }
+        .review-early-title { font-size: 0.9rem; letter-spacing: 0.2em; margin-bottom: 0.75rem; color: var(--text-dim); }
+        .review-early-detail { font-size: 0.7rem; color: var(--text-dim); letter-spacing: 0.1em; }
         .add-row { margin-top: auto; }
         .add-btn {
             background: none; border: 1px dashed rgba(0,255,65,0.18);
@@ -557,7 +575,7 @@
             <button onclick="showMap()" class="btn-ghost">PILLAR MAP</button>
             <button onclick="showWeeklyReview()" class="btn-ghost">WEEKLY</button>
             <button onclick="showMonthlyReview()" class="btn-ghost">MONTHLY</button>
-            <button onclick="showMilestones()" class="btn-ghost">MILESTONES</button>
+            <button onclick="showMilestones()" class="btn-ghost">ACTIVITY MAP</button>
             <button onclick="showFacts()" class="btn-ghost">WHAT I KNOW</button>
         </div>
     </div>
@@ -604,6 +622,10 @@
     <div class="sys-label">// MANAGER HAT — WEEKLY REVIEW</div>
     <hr class="divider">
     <p id="review-loading" class="loading-text">ANALYSING YOUR WEEK</p>
+    <div id="review-early" class="review-early hidden">
+        <p class="review-early-title">// NOT YET</p>
+        <p class="review-early-detail" id="review-early-msg"></p>
+    </div>
     <div id="review-content" class="hidden">
         <div class="review-section">
             <p class="review-label accent">WHAT MOVED</p>
@@ -635,6 +657,10 @@
     <div class="sys-label">// ARCHITECT HAT — 30-DAY VISION</div>
     <hr class="divider">
     <p id="monthly-loading" class="loading-text">READING YOUR ARC</p>
+    <div id="monthly-early" class="review-early hidden">
+        <p class="review-early-title">// NOT YET</p>
+        <p class="review-early-detail" id="monthly-early-msg"></p>
+    </div>
     <div id="monthly-content" class="hidden">
         <div class="review-section">
             <p class="review-label accent">PILLARS MOVED</p>
@@ -659,11 +685,11 @@
 <!-- ═══════════════════  MILESTONES  ═════════════ -->
 <div id="screen-milestones" class="panel hidden" style="max-width:780px;width:100%;">
     <div class="sys-bar">
-        <span><span class="sys-dot"></span>MAP::MILESTONES</span>
-        <span>28-DAY ACTIVITY</span>
+        <span><span class="sys-dot"></span>MAP::ACTIVITY</span>
+        <span>28-DAY HISTORY</span>
         <button onclick="showRitual()" class="btn-ghost" style="font-size:0.58rem;">BACK</button>
     </div>
-    <div class="sys-label">// MANAGER HAT — MILESTONE MAP</div>
+    <div class="sys-label">// MANAGER HAT — ACTIVITY MAP</div>
     <hr class="divider">
     <p id="milestones-loading" class="loading-text">LOADING</p>
     <div id="milestones-grid" class="hidden"></div>
@@ -694,7 +720,7 @@
         <span class="leg-active">◆ ACTIVE</span>
         <span class="leg-locked">◇ LOCKED</span>
         <span class="leg-done">✓ DONE</span>
-        <span class="leg-note">// TAP TARGET TO CYCLE · HOLD TO DELETE</span>
+        <span class="leg-note">// TAP TO CYCLE · HOLD TO DELETE · TAP [+STEPS] FOR MILESTONES</span>
     </div>
     <div id="sectors-grid" class="vb-grid"></div>
 </div>
@@ -778,7 +804,9 @@ async function apiFetch(url, options = {}) {
             sessionStorage.removeItem('architect_user_id');
             showLoginScreen();
         }
-        throw new Error(err.detail || `HTTP ${res.status}`);
+        const error = new Error(err.detail || `HTTP ${res.status}`);
+        error.status = res.status;
+        throw error;
     }
     return res.json();
 }
@@ -851,6 +879,7 @@ const MORNING_QUOTES = [
 ];
 
 let currentSeedQuestion = '';
+let currentDirective = '';
 
 async function showRitual() {
     if (!authToken) { showLoginScreen(); return; }
@@ -873,6 +902,7 @@ async function showRitual() {
 
         document.getElementById('morning-message').textContent = `"${data.message}"`;
         currentSeedQuestion = data.seed_question || '';
+        currentDirective = data.directive || '';
 
         const directiveEl = document.getElementById('morning-directive');
         if (data.directive) {
@@ -947,7 +977,12 @@ async function submitSpark() {
 function showEvening() {
     document.getElementById('morning-view').classList.add('hidden');
     document.getElementById('evening-view').classList.remove('hidden');
-    document.getElementById('seed-question').textContent = currentSeedQuestion;
+    const seedEl = document.getElementById('seed-question');
+    if (currentDirective) {
+        seedEl.innerHTML = `<span style="color:var(--text-dim);font-size:0.7rem;letter-spacing:0.1em;">// TODAY'S DIRECTIVE: ${currentDirective}</span><br><br>${currentSeedQuestion}`;
+    } else {
+        seedEl.textContent = currentSeedQuestion;
+    }
     document.getElementById('journal-input').value = '';
     document.getElementById('char-count').textContent = '0 / 10,000';
 }
@@ -1023,23 +1058,47 @@ function _buildVisionBoard(pillars, targets) {
     });
 }
 
+function _makeTargetWrap(t) {
+    const wrap = document.createElement('div');
+    wrap.className = 'target-wrap';
+
+    const row = document.createElement('div');
+    row.className = `target-item t-${t.status}`;
+    row.title = 'Tap to cycle · hold to delete';
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'ti-text';
+    textSpan.textContent = t.text;
+    row.appendChild(textSpan);
+
+    const badge = document.createElement('span');
+    badge.className = 'ms-badge';
+    badge.id = `ms-badge-${t.id}`;
+    badge.textContent = (t.milestone_count > 0) ? `${t.milestones_done}/${t.milestone_count}✓` : '+ STEPS';
+    badge.onclick = (e) => { e.stopPropagation(); _toggleMsPanel(t.id); };
+    row.appendChild(badge);
+
+    row.onclick = (e) => { if (!e.target.classList.contains('ms-badge')) _cycleTarget(t, row); };
+    row.oncontextmenu = (e) => { e.preventDefault(); _deleteTarget(t.id, wrap); };
+    let pressTimer;
+    row.addEventListener('touchstart', () => { pressTimer = setTimeout(() => _deleteTarget(t.id, wrap), 600); });
+    row.addEventListener('touchend', () => clearTimeout(pressTimer));
+
+    const panel = document.createElement('div');
+    panel.className = 'ms-panel';
+    panel.id = `ms-panel-${t.id}`;
+    panel.dataset.loaded = 'false';
+
+    wrap.appendChild(row);
+    wrap.appendChild(panel);
+    return wrap;
+}
+
 function _renderTargets(pid, targets) {
     const list = document.getElementById('tlist-' + pid);
     if (!list) return;
     list.innerHTML = '';
-    targets.forEach(t => {
-        const div = document.createElement('div');
-        div.className = `target-item t-${t.status}`;
-        div.textContent = t.text;
-        div.title = 'Tap to cycle · hold to delete';
-        div.onclick = () => _cycleTarget(t, div);
-        div.oncontextmenu = (e) => { e.preventDefault(); _deleteTarget(t.id, div); };
-        // Long-press for mobile delete
-        let pressTimer;
-        div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => _deleteTarget(t.id, div), 600); });
-        div.addEventListener('touchend', () => clearTimeout(pressTimer));
-        list.appendChild(div);
-    });
+    targets.forEach(t => list.appendChild(_makeTargetWrap(t)));
 }
 
 async function _cycleTarget(t, el) {
@@ -1090,19 +1149,127 @@ async function _confirmTarget(pid, pillarName) {
             body: JSON.stringify({ pillar_name: pillarName, text }),
         });
         const list = document.getElementById('tlist-' + pid);
-        const div  = document.createElement('div');
-        div.className = 'target-item t-locked';
-        div.textContent = t.text;
-        div.title = 'Tap to cycle · hold to delete';
-        div.onclick = () => _cycleTarget(t, div);
-        div.oncontextmenu = (e) => { e.preventDefault(); _deleteTarget(t.id, div); };
-        let pressTimer;
-        div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => _deleteTarget(t.id, div), 600); });
-        div.addEventListener('touchend', () => clearTimeout(pressTimer));
-        list.appendChild(div);
+        list.appendChild(_makeTargetWrap(t));
     } catch (e) {
         showToast(e.message, true);
     }
+}
+
+/* ── MILESTONE SUB-GOAL FUNCTIONS ── */
+
+async function _toggleMsPanel(targetId) {
+    const panel = document.getElementById('ms-panel-' + targetId);
+    if (!panel) return;
+    if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
+    panel.classList.add('open');
+    if (panel.dataset.loaded === 'true') return;
+    try {
+        const ms = await apiFetch(`/user/targets/${targetId}/milestones`);
+        panel.dataset.loaded = 'true';
+        _renderMsItems(targetId, ms);
+    } catch (e) {
+        panel.classList.remove('open');
+        showToast(e.message, true);
+    }
+}
+
+function _renderMsItems(targetId, milestones) {
+    const panel = document.getElementById('ms-panel-' + targetId);
+    if (!panel) return;
+    panel.innerHTML = '';
+    milestones.forEach(m => _appendMsItem(panel, m, null));
+    const addRow = document.createElement('div');
+    addRow.className = 'ms-add-row';
+    const input = document.createElement('input');
+    input.className = 'ms-input';
+    input.id = `ms-input-${targetId}`;
+    input.placeholder = '// ADD STEP...';
+    input.maxLength = 200;
+    input.onkeydown = (e) => { if (e.key === 'Enter') _addMilestone(targetId); };
+    const btn = document.createElement('button');
+    btn.className = 'add-confirm';
+    btn.textContent = '↵';
+    btn.onclick = () => _addMilestone(targetId);
+    addRow.appendChild(input);
+    addRow.appendChild(btn);
+    panel.appendChild(addRow);
+}
+
+function _appendMsItem(panel, m, addRow) {
+    const row = document.createElement('div');
+    row.className = `ms-item${m.status === 'done' ? ' done' : ''}`;
+    row.id = `ms-item-${m.id}`;
+    const cb = document.createElement('span');
+    cb.className = `ms-cb${m.status === 'done' ? ' checked' : ''}`;
+    const text = document.createElement('span');
+    text.textContent = m.text;
+    row.appendChild(cb);
+    row.appendChild(text);
+    row.onclick = () => _toggleMilestone(m, row, cb);
+    row.oncontextmenu = (e) => { e.preventDefault(); _deleteMilestone(m.id, row, m.target_id); };
+    let pressTimer;
+    row.addEventListener('touchstart', () => { pressTimer = setTimeout(() => _deleteMilestone(m.id, row, m.target_id), 600); });
+    row.addEventListener('touchend', () => clearTimeout(pressTimer));
+    const ref = addRow || panel.querySelector('.ms-add-row');
+    if (ref) panel.insertBefore(row, ref);
+    else panel.appendChild(row);
+}
+
+async function _toggleMilestone(m, row, cb) {
+    const next = m.status === 'done' ? 'todo' : 'done';
+    const prev = m.status;
+    m.status = next;
+    row.className = `ms-item${next === 'done' ? ' done' : ''}`;
+    cb.className = `ms-cb${next === 'done' ? ' checked' : ''}`;
+    try {
+        await apiFetch(`/user/milestones/${m.id}`, { method: 'PATCH', body: JSON.stringify({ status: next }) });
+        _updateMsBadge(m.target_id);
+    } catch (e) {
+        m.status = prev;
+        row.className = `ms-item${prev === 'done' ? ' done' : ''}`;
+        cb.className = `ms-cb${prev === 'done' ? ' checked' : ''}`;
+        showToast(e.message, true);
+    }
+}
+
+async function _deleteMilestone(id, row, targetId) {
+    row.style.opacity = '0.3';
+    try {
+        await apiFetch(`/user/milestones/${id}`, { method: 'DELETE' });
+        row.remove();
+        _updateMsBadge(targetId);
+    } catch (e) {
+        row.style.opacity = '';
+        showToast(e.message, true);
+    }
+}
+
+async function _addMilestone(targetId) {
+    const input = document.getElementById('ms-input-' + targetId);
+    const text = input.value.trim().toUpperCase();
+    if (!text) return;
+    input.value = '';
+    try {
+        const m = await apiFetch(`/user/targets/${targetId}/milestones`, {
+            method: 'POST',
+            body: JSON.stringify({ text }),
+        });
+        const panel = document.getElementById('ms-panel-' + targetId);
+        _appendMsItem(panel, m, panel.querySelector('.ms-add-row'));
+        _updateMsBadge(targetId);
+    } catch (e) {
+        showToast(e.message, true);
+    }
+}
+
+function _updateMsBadge(targetId) {
+    const panel = document.getElementById('ms-panel-' + targetId);
+    const badge = document.getElementById('ms-badge-' + targetId);
+    if (!panel || !badge) return;
+    const items = panel.querySelectorAll('.ms-item');
+    const done = panel.querySelectorAll('.ms-item.done').length;
+    const total = items.length;
+    badge.textContent = total > 0 ? `${done}/${total}✓` : '+ STEPS';
 }
 
 async function showWeeklyReview() {
@@ -1111,6 +1278,7 @@ async function showWeeklyReview() {
     document.getElementById('screen-review').classList.remove('hidden');
     document.getElementById('review-loading').classList.remove('hidden');
     document.getElementById('review-content').classList.add('hidden');
+    document.getElementById('review-early').classList.add('hidden');
     try {
         const data = await apiFetch('/ritual/weekly');
         const movedEl = document.getElementById('review-moved');
@@ -1135,8 +1303,14 @@ async function showWeeklyReview() {
         document.getElementById('review-loading').classList.add('hidden');
         document.getElementById('review-content').classList.remove('hidden');
     } catch (e) {
-        showToast(e.message, true);
-        showRitual();
+        document.getElementById('review-loading').classList.add('hidden');
+        if (e.status === 425) {
+            document.getElementById('review-early-msg').textContent = e.message;
+            document.getElementById('review-early').classList.remove('hidden');
+        } else {
+            showToast(e.message, true);
+            showRitual();
+        }
     }
 }
 
@@ -1146,6 +1320,7 @@ async function showMonthlyReview() {
     document.getElementById('screen-monthly').classList.remove('hidden');
     document.getElementById('monthly-loading').classList.remove('hidden');
     document.getElementById('monthly-content').classList.add('hidden');
+    document.getElementById('monthly-early').classList.add('hidden');
     try {
         const data = await apiFetch('/ritual/monthly');
         const movedEl = document.getElementById('monthly-moved');
@@ -1170,8 +1345,14 @@ async function showMonthlyReview() {
         document.getElementById('monthly-loading').classList.add('hidden');
         document.getElementById('monthly-content').classList.remove('hidden');
     } catch (e) {
-        showToast(e.message, true);
-        showRitual();
+        document.getElementById('monthly-loading').classList.add('hidden');
+        if (e.status === 425) {
+            document.getElementById('monthly-early-msg').textContent = e.message;
+            document.getElementById('monthly-early').classList.remove('hidden');
+        } else {
+            showToast(e.message, true);
+            showRitual();
+        }
     }
 }
 

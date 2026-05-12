@@ -248,7 +248,7 @@ def _storyteller_input(strategy: dict, ctx: UserContext | None) -> str:
     return base + "\n".join(fact_lines)
 
 
-def _weekly_review_input(entries: list[dict], ctx: UserContext) -> str:
+def _weekly_review_input(entries: list[dict], ctx: UserContext, targets_ctx: str = "") -> str:
     lines = ["=== WEEKLY REVIEW CONTEXT ==="]
     lines.append(f"Total sessions to date: {ctx.entry_count}")
 
@@ -262,6 +262,9 @@ def _weekly_review_input(entries: list[dict], ctx: UserContext) -> str:
         for p in sorted(ctx.pillar_states, key=lambda x: x["days_in_state"], reverse=True):
             lines.append(f"- {p['name']}: {p['status']} ({p['days_in_state']} days)")
 
+    if targets_ctx:
+        lines.append(f"\n=== ACTIVE TARGETS & MILESTONES ===\n{targets_ctx}")
+
     lines.append(f"\n=== JOURNAL ENTRIES THIS WEEK ({len(entries)} entries) ===")
     for e in entries:
         lines.append(f"\n[{e['date']}]:\n{e['content']}")
@@ -269,7 +272,7 @@ def _weekly_review_input(entries: list[dict], ctx: UserContext) -> str:
     return "\n".join(lines)
 
 
-def _monthly_review_input(entries: list[dict], ctx: UserContext) -> str:
+def _monthly_review_input(entries: list[dict], ctx: UserContext, targets_ctx: str = "") -> str:
     lines = ["=== MONTHLY REVIEW CONTEXT ==="]
     lines.append(f"Total sessions to date: {ctx.entry_count}")
 
@@ -282,6 +285,9 @@ def _monthly_review_input(entries: list[dict], ctx: UserContext) -> str:
         lines.append("\nPillar states (30-day snapshot):")
         for p in sorted(ctx.pillar_states, key=lambda x: x["days_in_state"], reverse=True):
             lines.append(f"- {p['name']}: {p['status']} ({p['days_in_state']} days in this state)")
+
+    if targets_ctx:
+        lines.append(f"\n=== ACTIVE TARGETS & MILESTONES ===\n{targets_ctx}")
 
     lines.append(f"\n=== JOURNAL ENTRIES THIS MONTH ({len(entries)} entries) ===")
     for e in entries:
@@ -359,12 +365,12 @@ class ArchitectPipeline:
             "momentum": strategy.get("momentum", "Paused"),
         }
 
-    def generate_weekly_review(self, entries: list[dict], ctx: UserContext) -> dict:
+    def generate_weekly_review(self, entries: list[dict], ctx: UserContext, targets_ctx: str = "") -> dict:
         logger.info("Generating weekly review (entries=%d)", len(entries))
         try:
             result_json = call_llm(
                 WEEKLY_REVIEW_PROMPT,
-                _weekly_review_input(entries, ctx),
+                _weekly_review_input(entries, ctx, targets_ctx),
                 json_mode=True,
             )
             data = json.loads(result_json)
@@ -383,12 +389,12 @@ class ArchitectPipeline:
                 "directive": "Write your evening journal every day this week without missing.",
             }
 
-    def generate_monthly_review(self, entries: list[dict], ctx: UserContext) -> dict:
+    def generate_monthly_review(self, entries: list[dict], ctx: UserContext, targets_ctx: str = "") -> dict:
         logger.info("Generating monthly review (entries=%d)", len(entries))
         try:
             result_json = call_llm(
                 MONTHLY_REVIEW_PROMPT,
-                _monthly_review_input(entries, ctx),
+                _monthly_review_input(entries, ctx, targets_ctx),
                 json_mode=True,
             )
             data = json.loads(result_json)
