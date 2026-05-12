@@ -10,7 +10,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from config import CORS_ORIGINS, configure_logging
-from database import SessionLocal, User, PillarState, JournalEntry, UserFact, PILLARS
+from database import SessionLocal, User, PillarState, JournalEntry, UserFact, DailyRitual, PILLARS
 from pipeline import ArchitectPipeline
 from auth import create_session, get_current_user_id
 from context import build_user_context
@@ -315,23 +315,42 @@ async def onboard_user(
 
 @app.get("/ritual/morning", response_model=MorningRitualResponse, tags=["ritual"])
 async def get_morning_ritual(user: User = Depends(require_user), db: Session = Depends(get_db)):
-    ctx = build_user_context(user.id, db)
+    today = datetime.date.today().isoformat()
     streak = _compute_streak(user.id, db)
+    ctx = build_user_context(user.id, db)
     seed_question = _get_seed_question(ctx.entry_count, ctx.pillar_states)
 
-    if not ctx.recent_entries:
+    # Return cached story if one was already generated today
+    cached = (
+        db.query(DailyRitual)
+        .filter(DailyRitual.user_id == user.id, DailyRitual.date == today)
+        .first()
+    )
+    if cached:
+        logger.info("Returning cached daily ritual for user_id=%d date=%s", user.id, today)
         return MorningRitualResponse(
-            message="Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do.",
-            directive="Write your first journal entry tonight — that is the only task that matters today.",
+            message=cached.message,
+            directive=cached.directive,
             seed_question=seed_question,
             streak=streak,
             total_entries=ctx.entry_count,
         )
 
-    result = pipeline.process_journal(ctx.recent_entries[0], ctx)
+    if not ctx.recent_entries:
+        message = "Welcome to Day 1. Your journey begins with a single step. Go do one thing today that the man you want to be would do."
+        directive = "Write your first journal entry tonight — that is the only task that matters today."
+    else:
+        result = pipeline.process_journal(ctx.recent_entries[0], ctx)
+        message = result["message"]
+        directive = result["directive"]
+
+    db.add(DailyRitual(user_id=user.id, date=today, message=message, directive=directive))
+    db.commit()
+    logger.info("Generated and cached daily ritual for user_id=%d date=%s", user.id, today)
+
     return MorningRitualResponse(
-        message=result["message"],
-        directive=result["directive"],
+        message=message,
+        directive=directive,
         seed_question=seed_question,
         streak=streak,
         total_entries=ctx.entry_count,

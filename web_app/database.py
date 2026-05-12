@@ -84,6 +84,15 @@ class UserFact(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
 
+class DailyRitual(Base):
+    __tablename__ = "daily_rituals"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(String(10), nullable=False)  # YYYY-MM-DD
+    message = Column(Text, nullable=False)
+    directive = Column(Text, nullable=False)
+
+
 Base.metadata.create_all(bind=engine)
 
 
