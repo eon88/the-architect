@@ -1,143 +1,369 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Architect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .pillar-card { transition: all 0.3s ease; }
-        .pillar-card:hover { transform: translateY(-5px); border-color: rgba(255, 255, 255, 0.3); }
-        .hidden { display: none; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The Architect — Design your life. Master your pillars.">
+  <meta name="theme-color" content="#000000">
+  <title>The Architect</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
+<body>
 
-    <!-- LOGIN SCREEN -->
-    <div id="screen-login" class="text-center max-w-md w-full">
-        <h1 class="text-5xl font-black tracking-tighter mb-8">THE ARCHITECT</h1>
-        <p class="text-gray-400 mb-12 text-lg">Design your life. Master your pillars.</p>
-        <button onclick="login()" class="w-full py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300 text-lg">
-            Begin Journey
+<!-- ===== LOADING OVERLAY ===== -->
+<div id="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
+  <div class="loading-logo">THE ARCHITECT</div>
+  <div class="loading-text">
+    <span id="loading-message">Initializing</span>
+    <div class="loading-dots" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+  <div class="loading-progress-bar" aria-hidden="true">
+    <div class="loading-progress-fill"></div>
+  </div>
+  <p class="loading-timeout" id="loading-timeout" role="alert">
+    Taking longer than expected — server may be starting up.
+  </p>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="screen-login">
+  <h1 class="login-logo">THE ARCHITECT</h1>
+  <p class="login-tagline">Design your life &mdash; Master your pillars</p>
+
+  <div class="login-form" role="main">
+    <div class="input-group">
+      <label class="input-label" for="login-email">Email Address</label>
+      <input
+        type="email"
+        id="login-email"
+        class="input-field"
+        placeholder="you@example.com"
+        autocomplete="email"
+        spellcheck="false"
+        aria-required="true"
+        aria-describedby="login-hint"
+      >
+      <span id="login-hint" class="sr-only">Enter your email to begin your daily ritual</span>
+    </div>
+
+    <button
+      id="login-btn"
+      class="btn btn-primary btn-full"
+      onclick="handleLogin()"
+      aria-label="Log in and begin your daily ritual"
+    >
+      Begin Ritual
+    </button>
+
+    <p style="font-size:0.7rem;color:var(--text-dim);text-align:center;letter-spacing:0.1em;">
+      // Press <kbd style="color:var(--green);">Enter</kbd> to submit
+    </p>
+  </div>
+</div>
+
+<!-- ===== APP SHELL ===== -->
+<div id="app-shell" class="hidden" style="display:flex;flex-direction:column;min-height:100vh;">
+
+  <!-- Top bar -->
+  <header id="topbar" role="banner">
+    <span class="topbar-logo" aria-label="The Architect">THE ARCHITECT</span>
+    <span class="topbar-user" id="topbar-user" aria-label="Current user"></span>
+  </header>
+
+  <!-- Breadcrumb -->
+  <nav id="breadcrumb" aria-label="Current location"></nav>
+
+  <!-- Daily progress indicator -->
+  <div id="daily-progress" role="region" aria-label="Daily ritual progress">
+    <div class="progress-step" id="dp-morning">
+      <div class="progress-dot" aria-hidden="true"></div>
+      <span>Morning</span>
+    </div>
+    <div class="progress-line" aria-hidden="true"></div>
+    <div class="progress-step" id="dp-midday">
+      <div class="progress-dot" aria-hidden="true"></div>
+      <span>Midday</span>
+    </div>
+    <div class="progress-line" aria-hidden="true"></div>
+    <div class="progress-step" id="dp-evening">
+      <div class="progress-dot" aria-hidden="true"></div>
+      <span>Evening</span>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div id="nav-wrapper">
+    <button
+      id="hamburger"
+      aria-controls="nav-menu"
+      aria-expanded="false"
+      aria-label="Toggle navigation menu"
+    >
+      <span>Navigation</span>
+      <span class="hamburger-icon" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+    </button>
+
+    <nav id="nav-menu" role="navigation" aria-label="Main navigation">
+      <!-- Group 1: Daily Rituals -->
+      <div class="nav-group">
+        <div class="nav-group-label" id="nav-group-daily">Daily Rituals</div>
+        <div class="nav-buttons" role="group" aria-labelledby="nav-group-daily">
+          <button
+            class="nav-btn primary"
+            data-section="morning"
+            aria-label="Open morning ritual"
+            title="Morning Protocol (M)"
+          >Morning</button>
+          <button
+            class="nav-btn primary"
+            data-section="midday"
+            aria-label="Open midday alignment"
+            title="Midday Alignment"
+          >Midday</button>
+          <button
+            class="nav-btn primary"
+            data-section="evening"
+            aria-label="Open evening reflection"
+            title="Evening Reflection (E)"
+          >Evening</button>
+        </div>
+      </div>
+
+      <!-- Group 2: Reviews -->
+      <div class="nav-group">
+        <div class="nav-group-label" id="nav-group-reviews">Reviews</div>
+        <div class="nav-buttons" role="group" aria-labelledby="nav-group-reviews">
+          <button
+            class="nav-btn"
+            data-section="weekly"
+            aria-label="Open weekly review"
+          >Weekly</button>
+          <button
+            class="nav-btn"
+            data-section="monthly"
+            aria-label="Open monthly review"
+          >Monthly</button>
+        </div>
+      </div>
+
+      <!-- Group 3: Insights -->
+      <div class="nav-group">
+        <div class="nav-group-label" id="nav-group-insights">Insights</div>
+        <div class="nav-buttons" role="group" aria-labelledby="nav-group-insights">
+          <button
+            class="nav-btn"
+            data-section="pillars"
+            aria-label="Open pillar map"
+            title="Pillar Map (P)"
+          >Pillar Map</button>
+          <button
+            class="nav-btn"
+            data-section="activity"
+            aria-label="Open activity map"
+          >Activity Map</button>
+          <button
+            class="nav-btn"
+            data-section="knowledge"
+            aria-label="Open what I know section"
+          >What I Know</button>
+        </div>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main id="main-content" role="main">
+
+    <!-- MORNING SECTION -->
+    <section id="section-morning" class="section" aria-labelledby="morning-title">
+      <div class="section-header">
+        <div class="section-label">Daily Ritual</div>
+        <h2 class="section-title" id="morning-title">Morning Protocol</h2>
+      </div>
+
+      <div id="morning-content" aria-live="polite">
+        <!-- Populated by JS -->
+      </div>
+
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1.5rem;">
+        <button class="btn btn-primary" onclick="loadEvening()" aria-label="Go to evening reflection">
+          Evening Journal &rarr;
         </button>
-    </div>
+        <button class="btn btn-ghost" onclick="loadPillarMap()" aria-label="View your pillar map">
+          View Pillars
+        </button>
+      </div>
+    </section>
 
-    <!-- RITUAL SCREEN -->
-    <div id="screen-ritual" class="hidden w-full max-w-2xl text-center">
-        <div id="morning-view" class="hidden">
-            <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Morning Ritual</span>
-            <h2 id="morning-message" class="text-3xl font-medium leading-relaxed mb-12 italic">"Loading your story..."</h2>
-            <button onclick="showEvening()" class="text-sm text-gray-500 underline hover:text-white transition">Evening Journal</button>
+    <!-- MIDDAY SECTION -->
+    <section id="section-midday" class="section" aria-labelledby="midday-title">
+      <div class="section-header">
+        <div class="section-label">Daily Ritual</div>
+        <h2 class="section-title" id="midday-title">Midday Alignment</h2>
+      </div>
+
+      <div class="coming-soon" role="region" aria-label="Coming soon">
+        <div class="coming-soon-icon" aria-hidden="true">◈</div>
+        <h3>In Development</h3>
+        <p class="text-dim" style="margin-top:0.5rem;">
+          The midday alignment check will help you recalibrate at peak hours.<br>
+          <span style="color:var(--green-dim);">// Coming soon</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- EVENING SECTION -->
+    <section id="section-evening" class="section" aria-labelledby="evening-title">
+      <div class="section-header">
+        <div class="section-label">Daily Ritual</div>
+        <h2 class="section-title" id="evening-title">Evening Reflection</h2>
+      </div>
+
+      <div
+        id="seed-question"
+        class="seed-question"
+        role="heading"
+        aria-level="3"
+        aria-live="polite"
+      ></div>
+
+      <div class="textarea-wrapper">
+        <label for="journal-textarea" class="sr-only">Evening journal entry</label>
+        <textarea
+          id="journal-textarea"
+          class="journal-textarea"
+          placeholder="Write honestly. Nobody is watching."
+          maxlength="2000"
+          aria-describedby="char-counter-desc"
+          aria-multiline="true"
+        ></textarea>
+      </div>
+
+      <div class="char-counter-wrapper" id="char-counter-desc" aria-live="polite">
+        <div class="char-counter-bar" aria-hidden="true">
+          <div class="char-counter-fill low" id="char-fill"></div>
         </div>
+        <span class="char-counter-text" id="char-text" aria-label="Character count">
+          0 of 2,000 characters
+        </span>
+      </div>
 
-        <div id="evening-view" class="hidden">
-            <span class="text-xs uppercase tracking-widest text-gray-500 mb-4 block">Evening Reflection</span>
-            <p id="seed-question" class="text-xl mb-8">How was your day?</p>
-            <textarea id="journal-input" class="w-full h-48 p-6 bg-transparent border-2 border-gray-800 rounded-2xl focus:border-white outline-none transition text-lg" placeholder="Write here..."></textarea>
-            <button onclick="submitJournal()" class="mt-8 px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition duration-300">
-                Submit
-            </button>
-        </div>
-    </div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button
+          id="evening-submit"
+          class="btn btn-primary"
+          onclick="submitJournal()"
+          aria-label="Submit your evening journal entry"
+        >
+          Submit Entry
+        </button>
+        <button
+          class="btn btn-ghost"
+          onclick="loadMorning()"
+          aria-label="Return to morning ritual"
+        >
+          &larr; Morning
+        </button>
+      </div>
+    </section>
 
-    <!-- MAP SCREEN -->
-    <div id="screen-map" class="hidden w-full max-w-4xl">
-        <div class="flex justify-between items-end mb-12">
-            <h2 class="text-4xl font-black tracking-tighter">PILLAR MAP</h2>
-            <button onclick="showRitual()" class="text-sm text-gray-400 hover:text-white">Back to Ritual</button>
-        </div>
-        <div id="pillars-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Pillars injected here -->
-        </div>
-    </div>
+    <!-- PILLAR MAP SECTION -->
+    <section id="section-pillars" class="section" aria-labelledby="pillars-title">
+      <div class="section-header">
+        <div class="section-label">Insights</div>
+        <h2 class="section-title" id="pillars-title">Pillar Map</h2>
+      </div>
 
-    <script>
-        let userId = null;
+      <div
+        id="pillars-grid"
+        class="pillars-grid"
+        role="list"
+        aria-label="Life pillars and their status"
+        aria-live="polite"
+      >
+        <!-- Populated by JS -->
+      </div>
+    </section>
 
-        async function login() {
-            // Simulating Google Login for MVP
-            const res = await fetch('/auth/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: 'test@example.com', name: 'User' })
-            });
-            const data = await res.json();
-            userId = data.user_id;
-            showRitual();
-        }
+    <!-- WEEKLY SECTION -->
+    <section id="section-weekly" class="section" aria-labelledby="weekly-title">
+      <div class="section-header">
+        <div class="section-label">Reviews</div>
+        <h2 class="section-title" id="weekly-title">Weekly Review</h2>
+      </div>
 
-        async function showRitual() {
-            hideAll();
-            document.getElementById('screen-ritual').classList.remove('hidden');
-            
-            // Try to show morning first
-            const res = await fetch(`/ritual/morning/${userId}`);
-            const data = await res.json();
-            document.getElementById('morning-message').innerText = data.message;
-            document.getElementById('morning-view').classList.remove('hidden');
-        }
+      <div class="coming-soon" role="region">
+        <div class="coming-soon-icon" aria-hidden="true">◈</div>
+        <h3>In Development</h3>
+        <p class="text-dim" style="margin-top:0.5rem;">
+          Weekly synthesis of your journal entries and pillar momentum.<br>
+          <span style="color:var(--green-dim);">// Coming soon</span>
+        </p>
+      </div>
+    </section>
 
-        function showEvening() {
-            document.getElementById('morning-view').classList.add('hidden');
-            document.getElementById('evening-view').classList.remove('hidden');
-            
-            const questions = [
-                "Who in your life actually pushes you to be better, and who is just taking up space?",
-                "If your income vanished tomorrow, how many days could you survive?",
-                "When was the last time you felt peace without a screen or distraction?",
-                "What is one skill you'd spend 10,000 hours mastering just for pride?",
-                "Do the people closest to you feel seen and heard by you?",
-                "What belief did you hold for years that you now know is wrong?",
-                "If you disappeared tomorrow, what would the world actually miss?"
-            ];
-            document.getElementById('seed-question').innerText = questions[Math.floor(Math.random() * questions.length)];
-        }
+    <!-- MONTHLY SECTION -->
+    <section id="section-monthly" class="section" aria-labelledby="monthly-title">
+      <div class="section-header">
+        <div class="section-label">Reviews</div>
+        <h2 class="section-title" id="monthly-title">Monthly Review</h2>
+      </div>
 
-        async function submitJournal() {
-            const content = document.getElementById('journal-input').value;
-            await fetch('/ritual/evening', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user_id: userId, content: content })
-            });
-            alert("Journal saved. See you in the morning.");
-            showRitual();
-        }
+      <div class="coming-soon" role="region">
+        <div class="coming-soon-icon" aria-hidden="true">◈</div>
+        <h3>In Development</h3>
+        <p class="text-dim" style="margin-top:0.5rem;">
+          Monthly arc analysis across all life pillars.<br>
+          <span style="color:var(--green-dim);">// Coming soon</span>
+        </p>
+      </div>
+    </section>
 
-        async function showMap() {
-            hideAll();
-            document.getElementById('screen-map').classList.remove('hidden');
-            const res = await fetch(`/user/pillars/${userId}`);
-            const pillars = await res.json();
-            
-            const grid = document.getElementById('pillars-grid');
-            grid.innerHTML = '';
-            pillars.forEach(p => {
-                const card = document.createElement('div');
-                card.className = `pillar-card glass p-8 rounded-3xl text-center ${p.status === 'Moving' ? 'border-white' : 'border-gray-800'}`;
-                card.innerHTML = `
-                    <h3 class="text-xl font-bold mb-2">${p.name}</h3>
-                    <span class="text-xs uppercase tracking-widest ${p.status === 'Moving' ? 'text-green-400' : 'text-gray-500'}">${p.status}</span>
-                `;
-                grid.appendChild(card);
-            });
-        }
+    <!-- ACTIVITY MAP SECTION -->
+    <section id="section-activity" class="section" aria-labelledby="activity-title">
+      <div class="section-header">
+        <div class="section-label">Insights</div>
+        <h2 class="section-title" id="activity-title">Activity Map</h2>
+      </div>
 
-        function hideAll() {
-            document.getElementById('screen-login').classList.add('hidden');
-            document.getElementById('screen-ritual').classList.add('hidden');
-            document.getElementById('screen-map').classList.add('hidden');
-            document.getElementById('morning-view').classList.add('hidden');
-            document.getElementById('evening-view').classList.add('hidden');
-        }
-        
-        // Add a keyboard shortcut for the map (since we have no buttons)
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'm') showMap();
-            if (e.key === 'r') showRitual();
-        });
-    </script>
+      <div class="coming-soon" role="region">
+        <div class="coming-soon-icon" aria-hidden="true">◈</div>
+        <h3>In Development</h3>
+        <p class="text-dim" style="margin-top:0.5rem;">
+          Visual heatmap of your journaling consistency and pillar focus.<br>
+          <span style="color:var(--green-dim);">// Coming soon</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- KNOWLEDGE SECTION -->
+    <section id="section-knowledge" class="section" aria-labelledby="knowledge-title">
+      <div class="section-header">
+        <div class="section-label">Insights</div>
+        <h2 class="section-title" id="knowledge-title">What I Know</h2>
+      </div>
+
+      <div class="coming-soon" role="region">
+        <div class="coming-soon-icon" aria-hidden="true">◈</div>
+        <h3>In Development</h3>
+        <p class="text-dim" style="margin-top:0.5rem;">
+          A living map of your extracted beliefs, insights, and principles.<br>
+          <span style="color:var(--green-dim);">// Coming soon</span>
+        </p>
+      </div>
+    </section>
+
+  </main><!-- /main-content -->
+
+</div><!-- /app-shell -->
+
+<script src="/static/script.js"></script>
 </body>
 </html>
